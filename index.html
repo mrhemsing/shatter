@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shatter</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #050816;
+        --panel: rgba(10, 14, 32, 0.86);
+        --panel-border: rgba(255, 255, 255, 0.12);
+        --text: #f4f7ff;
+        --muted: #a5b0d6;
+        --accent: #7c5cff;
+        --accent-2: #21d4fd;
+        --danger: #ff4d67;
+        --safe: #27d980;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background:
+          radial-gradient(circle at top, rgba(124, 92, 255, 0.22), transparent 32%),
+          linear-gradient(180deg, #081020 0%, #03050c 100%);
+        color: var(--text);
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .shell {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+        background: linear-gradient(180deg, rgba(5, 8, 22, 0.95), rgba(5, 8, 22, 0.78));
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .title-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.2rem, 1rem + 1vw, 2rem);
+        letter-spacing: 0.02em;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: minmax(240px, 1fr) auto auto auto;
+        gap: 10px;
+      }
+
+      .field,
+      .button {
+        min-height: 48px;
+        border-radius: 14px;
+        border: 1px solid var(--panel-border);
+        background: var(--panel);
+        color: var(--text);
+        font: inherit;
+      }
+
+      .field {
+        width: 100%;
+        padding: 0 14px;
+      }
+
+      .field:focus,
+      .button:focus-visible {
+        outline: 2px solid rgba(33, 212, 253, 0.75);
+        outline-offset: 2px;
+      }
+
+      .button {
+        padding: 0 16px;
+        cursor: pointer;
+        transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+      }
+
+      .button:hover {
+        transform: translateY(-1px);
+        border-color: rgba(255, 255, 255, 0.25);
+      }
+
+      .button.primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        border: none;
+        color: white;
+        font-weight: 700;
+      }
+
+      .button.ghost {
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .button.warn {
+        background: rgba(255, 77, 103, 0.12);
+        color: #ffd7de;
+      }
+
+      .status {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .status strong {
+        color: var(--text);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--safe);
+        box-shadow: 0 0 0 4px rgba(39, 217, 128, 0.16);
+      }
+
+      .stage {
+        position: relative;
+        min-height: 0;
+        padding: 14px;
+      }
+
+      #frameWrap {
+        position: relative;
+        width: 100%;
+        height: calc(100vh - 170px);
+        min-height: 420px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 18px;
+        overflow: hidden;
+        background: #0a0f1f;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      }
+
+      iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: white;
+      }
+
+      canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        cursor: crosshair;
+        pointer-events: auto;
+      }
+
+      .overlay-note {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        z-index: 5;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.52);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.88rem;
+        pointer-events: none;
+      }
+
+      @media (max-width: 880px) {
+        .controls {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        #frameWrap {
+          height: calc(100vh - 240px);
+        }
+      }
+
+      @media (max-width: 560px) {
+        .controls {
+          grid-template-columns: 1fr;
+        }
+
+        #frameWrap {
+          height: calc(100vh - 320px);
+          min-height: 360px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="shell">
+      <div class="title-row">
+        <div>
+          <h1>Shatter</h1>
+          <div class="subtitle">Load a site, then blast the glass. Best with pages that allow iframe embedding.</div>
+        </div>
+        <div class="badge"><span class="dot"></span><span>Right click or Shift + click to shoot</span></div>
+      </div>
+
+      <div class="controls">
+        <input id="urlInput" class="field" type="text" value="https://example.com" spellcheck="false" />
+        <button id="loadBtn" class="button primary" type="button">Load URL</button>
+        <button id="resetBtn" class="button ghost" type="button">Reset Damage</button>
+        <button id="demoBtn" class="button warn" type="button">Load Demo Page</button>
+      </div>
+
+      <div class="status">
+        <span><strong id="statusLabel">Ready.</strong></span>
+        <span id="hintLabel">If a site blocks iframes, use the demo page or a permissive URL.</span>
+      </div>
+    </header>
+
+    <main class="stage">
+      <div id="frameWrap">
+        <iframe id="siteFrame" title="Website preview" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+        <canvas id="fxCanvas"></canvas>
+        <div class="overlay-note">Cross-origin pages may load, but I can only shatter the overlay unless the page permits same-origin access.</div>
+      </div>
+    </main>
+
+    <script>
+      const demoHtml = String.raw`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shatter Demo</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      color: white;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.2), transparent 20%),
+        radial-gradient(circle at 80% 10%, rgba(33,212,253,0.25), transparent 28%),
+        linear-gradient(135deg, #7c5cff, #0f172a 60%, #050816);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+    .card {
+      width: min(820px, calc(100vw - 48px));
+      padding: 32px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.18);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.35);
+      backdrop-filter: blur(12px);
+    }
+    h2 { margin: 0 0 12px; font-size: clamp(2rem, 5vw, 4rem); }
+    p { margin: 0 0 20px; line-height: 1.6; color: rgba(255,255,255,0.84); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 24px;
+    }
+    .tile {
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(0,0,0,0.28);
+      border: 1px solid rgba(255,255,255,0.1);
+      min-height: 120px;
+    }
+    .tile strong { display: block; margin-bottom: 8px; font-size: 1rem; }
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <section class="card">
+    <div>🔥 DEMO MODE</div>
+    <h2>Shatter any page.</h2>
+    <p>
+      This local demo exists so the blast effect always works, even when outside sites block iframe embedding.
+      Right click anywhere to punch holes and throw shards across the screen.
+    </p>
+    <div class="grid">
+      <div class="tile"><strong>Load URLs</strong>Try sites that allow framing, internal tools, or your own builds.</div>
+      <div class="tile"><strong>Shoot</strong>Right click or Shift + click if your trackpad makes right click annoying.</div>
+      <div class="tile"><strong>Reset</strong>Clear the damage layer anytime and go again.</div>
+    </div>
+  </section>
+</body>
+</html>`;
+
+      const frame = document.getElementById("siteFrame");
+      const canvas = document.getElementById("fxCanvas");
+      const ctx = canvas.getContext("2d");
+      const sourceLayer = document.createElement("canvas");
+      const sourceCtx = sourceLayer.getContext("2d");
+      const urlInput = document.getElementById("urlInput");
+      const loadBtn = document.getElementById("loadBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const demoBtn = document.getElementById("demoBtn");
+      const statusLabel = document.getElementById("statusLabel");
+      const hintLabel = document.getElementById("hintLabel");
+      const frameWrap = document.getElementById("frameWrap");
+
+      const holes = [];
+      const shards = [];
+      const sparks = [];
+      const maxHoles = 100;
+      const maxShards = 500;
+      const gravity = 1800;
+      let pointerX = 0;
+      let pointerY = 0;
+      let hasPointer = false;
+      let lastTime = performance.now();
+      let latestFrameImage = null;
+      let currentSourceMode = "demo";
+      let currentUrl = "about:srcdoc";
+
+      function setStatus(text, hint) {
+        statusLabel.textContent = text;
+        if (hint) hintLabel.textContent = hint;
+      }
+
+      function normalizeUrl(value) {
+        const raw = value.trim();
+        if (!raw) return "";
+        if (/^https?:\/\//i.test(raw)) return raw;
+        return `https://${raw}`;
+      }
+
+      function resetDamage() {
+        holes.length = 0;
+        shards.length = 0;
+        sparks.length = 0;
+      }
+
+      function rand(min, max) {
+        return min + Math.random() * (max - min);
+      }
+
+      function resizeCanvas() {
+        const rect = frameWrap.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const width = Math.max(1, Math.round(rect.width * dpr));
+        const height = Math.max(1, Math.round(rect.height * dpr));
+        if (canvas.width === width && canvas.height === height) return;
+        canvas.width = width;
+        canvas.height = height;
+        sourceLayer.width = width;
+        sourceLayer.height = height;
+        pointerX = width / 2;
+        pointerY = height / 2;
+      }
+
+      function pointFromEvent(event) {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        return {
+          x: (event.clientX - rect.left) * dpr,
+          y: (event.clientY - rect.top) * dpr,
+        };
+      }
+
+      function shootAt(x, y) {
+        const dpr = window.devicePixelRatio || 1;
+        const radius = rand(20, 38) * dpr;
+        holes.push({ x, y, r: radius });
+        if (holes.length > maxHoles) holes.shift();
+
+        for (let i = 0; i < 8; i++) {
+          const angle = rand(0, Math.PI * 2);
+          const dist = Math.sqrt(Math.random()) * radius;
+          const cx = x + Math.cos(angle) * dist;
+          const cy = y + Math.sin(angle) * dist;
+          const w = rand(24, 72) * dpr;
+          const h = rand(24, 72) * dpr;
+          const sx = Math.max(0, Math.min(sourceLayer.width - w, cx - w * 0.5));
+          const sy = Math.max(0, Math.min(sourceLayer.height - h, cy - h * 0.5));
+          const dx = cx - x;
+          const dy = cy - y;
+          const len = Math.hypot(dx, dy) || 1;
+          shards.push({
+            sx,
+            sy,
+            sw: w,
+            sh: h,
+            x: sx + w * 0.5,
+            y: sy + h * 0.5,
+            vx: (dx / len) * rand(240, 760) + rand(-60, 60),
+            vy: (dy / len) * rand(200, 620) - rand(260, 820),
+            rot: rand(-0.4, 0.4),
+            vr: rand(-6, 6),
+            settled: false,
+          });
+        }
+
+        if (shards.length > maxShards) {
+          shards.splice(0, shards.length - maxShards);
+        }
+
+        for (let i = 0; i < 14; i++) {
+          const angle = rand(0, Math.PI * 2);
+          const speed = rand(240, 820);
+          const life = rand(0.15, 0.45);
+          sparks.push({
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life,
+            maxLife: life,
+          });
+        }
+      }
+
+      function updatePhysics(dt) {
+        const floorY = canvas.height + 100;
+        for (const shard of shards) {
+          if (shard.settled) continue;
+          shard.vy += gravity * dt;
+          shard.x += shard.vx * dt;
+          shard.y += shard.vy * dt;
+          shard.rot += shard.vr * dt;
+
+          if (shard.y - shard.sh > floorY || shard.x + shard.sw < -200 || shard.x - shard.sw > canvas.width + 200) {
+            shard.settled = true;
+          }
+        }
+
+        for (let i = sparks.length - 1; i >= 0; i--) {
+          const s = sparks[i];
+          s.life -= dt;
+          if (s.life <= 0) {
+            sparks.splice(i, 1);
+            continue;
+          }
+          s.vy += gravity * 0.42 * dt;
+          s.x += s.vx * dt;
+          s.y += s.vy * dt;
+        }
+      }
+
+      function drawBaseLayer() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (latestFrameImage) {
+          ctx.drawImage(latestFrameImage, 0, 0, canvas.width, canvas.height);
+        } else {
+          ctx.fillStyle = "#0a0f1f";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+
+      function syncSourceLayer() {
+        sourceCtx.clearRect(0, 0, sourceLayer.width, sourceLayer.height);
+        if (latestFrameImage) {
+          sourceCtx.drawImage(latestFrameImage, 0, 0, sourceLayer.width, sourceLayer.height);
+        } else {
+          sourceCtx.fillStyle = "#0a0f1f";
+          sourceCtx.fillRect(0, 0, sourceLayer.width, sourceLayer.height);
+        }
+      }
+
+      function drawHoleWarps() {
+        for (const hole of holes) {
+          const warpOuter = hole.r * 2.8;
+          const ringCount = 8;
+          for (let i = 0; i < ringCount; i++) {
+            const outerFrac = i / ringCount;
+            const innerFrac = (i + 1) / ringCount;
+            const ringOuter = warpOuter - outerFrac * (warpOuter - hole.r);
+            const ringInner = warpOuter - innerFrac * (warpOuter - hole.r);
+            const pull = innerFrac * innerFrac * 0.22;
+            const scale = 1 - pull;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(hole.x, hole.y, ringOuter, 0, Math.PI * 2);
+            ctx.arc(hole.x, hole.y, ringInner, 0, Math.PI * 2, true);
+            ctx.clip();
+            ctx.translate(hole.x, hole.y);
+            ctx.scale(scale, scale);
+            ctx.translate(-hole.x, -hole.y);
+            ctx.drawImage(sourceLayer, 0, 0);
+            ctx.restore();
+          }
+
+          const shadow = ctx.createRadialGradient(hole.x, hole.y, hole.r * 0.2, hole.x, hole.y, hole.r * 2.2);
+          shadow.addColorStop(0, "rgba(0,0,0,0.65)");
+          shadow.addColorStop(0.45, "rgba(0,0,0,0.2)");
+          shadow.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = shadow;
+          ctx.beginPath();
+          ctx.arc(hole.x, hole.y, hole.r * 2.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function drawHoles() {
+        ctx.save();
+        ctx.fillStyle = "#000";
+        ctx.globalCompositeOperation = "destination-out";
+        for (const hole of holes) {
+          const jag = hole.r * 0.22;
+          ctx.beginPath();
+          for (let i = 0; i < 20; i++) {
+            const a = (i / 20) * Math.PI * 2;
+            const rr = hole.r + Math.sin(a * 6 + hole.x * 0.003) * jag + Math.cos(a * 3.7 + hole.y * 0.004) * jag * 0.6;
+            const px = hole.x + Math.cos(a) * rr;
+            const py = hole.y + Math.sin(a) * rr;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+
+        for (const hole of holes) {
+          const jag = hole.r * 0.22;
+          ctx.beginPath();
+          for (let i = 0; i < 20; i++) {
+            const a = (i / 20) * Math.PI * 2;
+            const rr = hole.r * 1.04 + Math.sin(a * 6 + hole.x * 0.003) * jag + Math.cos(a * 3.7 + hole.y * 0.004) * jag * 0.6;
+            const px = hole.x + Math.cos(a) * rr;
+            const py = hole.y + Math.sin(a) * rr;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.strokeStyle = "rgba(255,255,255,0.2)";
+          ctx.lineWidth = 2 * (window.devicePixelRatio || 1);
+          ctx.stroke();
+        }
+      }
+
+      function drawShards() {
+        for (const shard of shards) {
+          if (shard.settled) continue;
+          ctx.save();
+          ctx.translate(shard.x, shard.y);
+          ctx.rotate(shard.rot);
+          ctx.drawImage(sourceLayer, shard.sx, shard.sy, shard.sw, shard.sh, -shard.sw / 2, -shard.sh / 2, shard.sw, shard.sh);
+          ctx.strokeStyle = "rgba(255,255,255,0.18)";
+          ctx.lineWidth = 1.5 * (window.devicePixelRatio || 1);
+          ctx.strokeRect(-shard.sw / 2, -shard.sh / 2, shard.sw, shard.sh);
+          ctx.restore();
+        }
+      }
+
+      function drawSparks() {
+        for (const spark of sparks) {
+          const t = spark.life / spark.maxLife;
+          ctx.fillStyle = `rgba(255, ${Math.round(150 + t * 80)}, ${Math.round(40 + t * 40)}, ${0.3 + t * 0.7})`;
+          ctx.beginPath();
+          ctx.arc(spark.x, spark.y, (2 + t * 2.5) * (window.devicePixelRatio || 1), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function drawCrosshair() {
+        if (!hasPointer) return;
+        const dpr = window.devicePixelRatio || 1;
+        const r = 16 * dpr;
+        const tick = 7 * dpr;
+        ctx.strokeStyle = "rgba(255, 77, 103, 0.95)";
+        ctx.lineWidth = 2.5 * dpr;
+        ctx.beginPath();
+        ctx.arc(pointerX, pointerY, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pointerX, pointerY - r - tick);
+        ctx.lineTo(pointerX, pointerY - r + tick);
+        ctx.moveTo(pointerX, pointerY + r - tick);
+        ctx.lineTo(pointerX, pointerY + r + tick);
+        ctx.moveTo(pointerX - r - tick, pointerY);
+        ctx.lineTo(pointerX - r + tick, pointerY);
+        ctx.moveTo(pointerX + r - tick, pointerY);
+        ctx.lineTo(pointerX + r + tick, pointerY);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(255, 77, 103, 0.95)";
+        ctx.beginPath();
+        ctx.arc(pointerX, pointerY, 2.4 * dpr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function render() {
+        const now = performance.now();
+        const dt = Math.min((now - lastTime) / 1000, 0.05);
+        lastTime = now;
+        updatePhysics(dt);
+        drawBaseLayer();
+        syncSourceLayer();
+        drawHoleWarps();
+        drawHoles();
+        drawShards();
+        drawSparks();
+        drawCrosshair();
+        requestAnimationFrame(render);
+      }
+
+      async function captureFrame() {
+        resizeCanvas();
+        try {
+          if (currentSourceMode === "demo") {
+            const svg = `
+              <svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}">
+                <foreignObject width="100%" height="100%">
+                  <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;overflow:hidden">${demoHtml}</div>
+                </foreignObject>
+              </svg>`;
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = reject;
+              img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+            });
+            latestFrameImage = img;
+            setStatus("Demo page loaded.", "This local page always supports the full shatter effect.");
+            return;
+          }
+
+          const doc = frame.contentDocument;
+          if (!doc) throw new Error("No frame document available.");
+          const body = doc.body;
+          const html = doc.documentElement;
+          if (!body || !html) throw new Error("Frame document missing body.");
+
+          const cloned = doc.documentElement.cloneNode(true);
+          const serialized = new XMLSerializer().serializeToString(cloned);
+          const width = Math.max(html.scrollWidth, html.clientWidth, body.scrollWidth, body.clientWidth);
+          const height = Math.max(html.scrollHeight, html.clientHeight, body.scrollHeight, body.clientHeight);
+          const svg = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+              <foreignObject width="100%" height="100%">${serialized}</foreignObject>
+            </svg>`;
+          const img = new Image();
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+          });
+          latestFrameImage = img;
+          setStatus(`Loaded ${currentUrl}`, "Page captured into the shatter layer.");
+        } catch (error) {
+          latestFrameImage = null;
+          setStatus("Loaded page, but screenshot capture is limited.", "The site is probably cross-origin or protected. You can still shoot the overlay, or use the demo page.");
+        }
+      }
+
+      async function loadDemo() {
+        currentSourceMode = "demo";
+        currentUrl = "demo";
+        frame.srcdoc = demoHtml;
+        resetDamage();
+        await captureFrame();
+      }
+
+      async function loadUrl(raw) {
+        const url = normalizeUrl(raw);
+        if (!url) {
+          setStatus("Enter a URL first.", "Try example.com or a site you control.");
+          return;
+        }
+        currentSourceMode = "url";
+        currentUrl = url;
+        resetDamage();
+        setStatus(`Loading ${url}...`, "If the site blocks framing, switch back to the demo page.");
+        frame.srcdoc = "";
+        frame.src = url;
+      }
+
+      frame.addEventListener("load", () => {
+        captureFrame();
+      });
+
+      loadBtn.addEventListener("click", () => loadUrl(urlInput.value));
+      demoBtn.addEventListener("click", () => loadDemo());
+      resetBtn.addEventListener("click", () => {
+        resetDamage();
+        setStatus(`Damage reset on ${currentSourceMode === "demo" ? "demo page" : currentUrl}.`, hintLabel.textContent);
+      });
+
+      urlInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          loadUrl(urlInput.value);
+        }
+      });
+
+      canvas.addEventListener("pointermove", (event) => {
+        const p = pointFromEvent(event);
+        pointerX = p.x;
+        pointerY = p.y;
+        hasPointer = true;
+      });
+
+      canvas.addEventListener("pointerleave", () => {
+        hasPointer = false;
+      });
+
+      canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+      canvas.addEventListener("pointerdown", (event) => {
+        const wantsShoot = event.button === 2 || (event.button === 0 && event.shiftKey);
+        if (!wantsShoot) return;
+        event.preventDefault();
+        const p = pointFromEvent(event);
+        shootAt(p.x, p.y);
+      });
+
+      new ResizeObserver(() => {
+        resizeCanvas();
+        captureFrame();
+      }).observe(frameWrap);
+
+      loadDemo();
+      render();
+    </script>
+  </body>
+</html>
