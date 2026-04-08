@@ -7,7 +7,6 @@
     <style>
       :root {
         color-scheme: dark;
-        --bg: #050816;
         --panel: rgba(10, 14, 32, 0.86);
         --panel-border: rgba(255, 255, 255, 0.12);
         --text: #f4f7ff;
@@ -173,11 +172,16 @@
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
       }
 
-      iframe {
+      .shot {
+        position: absolute;
+        inset: 0;
         width: 100%;
         height: 100%;
-        border: 0;
-        background: white;
+        object-fit: contain;
+        background: #0a0f1f;
+        user-select: none;
+        -webkit-user-drag: none;
+        pointer-events: none;
       }
 
       canvas {
@@ -187,7 +191,6 @@
         height: 100%;
         display: block;
         cursor: crosshair;
-        pointer-events: auto;
       }
 
       .overlay-note {
@@ -231,103 +234,63 @@
       <div class="title-row">
         <div>
           <h1>Shatter</h1>
-          <div class="subtitle">Load a site, then blast the glass. Best with pages that allow iframe embedding.</div>
+          <div class="subtitle">Grab a screenshot of any URL, then shoot the snapshot to pieces.</div>
         </div>
         <div class="badge"><span class="dot"></span><span>Right click or Shift + click to shoot</span></div>
       </div>
 
       <div class="controls">
         <input id="urlInput" class="field" type="text" value="https://example.com" spellcheck="false" />
-        <button id="loadBtn" class="button primary" type="button">Load URL</button>
+        <button id="loadBtn" class="button primary" type="button">Capture URL</button>
         <button id="resetBtn" class="button ghost" type="button">Reset Damage</button>
-        <button id="demoBtn" class="button warn" type="button">Load Demo Page</button>
+        <button id="demoBtn" class="button warn" type="button">Load Demo Shot</button>
       </div>
 
       <div class="status">
         <span><strong id="statusLabel">Ready.</strong></span>
-        <span id="hintLabel">If a site blocks iframes, use the demo page or a permissive URL.</span>
+        <span id="hintLabel">This version screenshots the page first, then shatters the image.</span>
       </div>
     </header>
 
     <main class="stage">
       <div id="frameWrap">
-        <iframe id="siteFrame" title="Website preview" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+        <img id="shotImage" class="shot" alt="Captured website screenshot" />
         <canvas id="fxCanvas"></canvas>
-        <div class="overlay-note">Cross-origin pages may load, but I can only shatter the overlay unless the page permits same-origin access.</div>
+        <div class="overlay-note">A screenshot-first pipeline is much more reliable than live iframe rendering.</div>
       </div>
     </main>
 
     <script>
-      const demoHtml = String.raw`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Shatter Demo</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Inter, system-ui, sans-serif;
-      color: white;
-      min-height: 100vh;
-      background:
-        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.2), transparent 20%),
-        radial-gradient(circle at 80% 10%, rgba(33,212,253,0.25), transparent 28%),
-        linear-gradient(135deg, #7c5cff, #0f172a 60%, #050816);
-      display: grid;
-      place-items: center;
-      overflow: hidden;
-    }
-    .card {
-      width: min(820px, calc(100vw - 48px));
-      padding: 32px;
-      border-radius: 24px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.18);
-      box-shadow: 0 24px 80px rgba(0,0,0,0.35);
-      backdrop-filter: blur(12px);
-    }
-    h2 { margin: 0 0 12px; font-size: clamp(2rem, 5vw, 4rem); }
-    p { margin: 0 0 20px; line-height: 1.6; color: rgba(255,255,255,0.84); }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
-      margin-top: 24px;
-    }
-    .tile {
-      padding: 18px;
-      border-radius: 18px;
-      background: rgba(0,0,0,0.28);
-      border: 1px solid rgba(255,255,255,0.1);
-      min-height: 120px;
-    }
-    .tile strong { display: block; margin-bottom: 8px; font-size: 1rem; }
-    @media (max-width: 720px) {
-      .grid { grid-template-columns: 1fr; }
-    }
-  </style>
-</head>
-<body>
-  <section class="card">
-    <div>🔥 DEMO MODE</div>
-    <h2>Shatter any page.</h2>
-    <p>
-      This local demo exists so the blast effect always works, even when outside sites block iframe embedding.
-      Right click anywhere to punch holes and throw shards across the screen.
-    </p>
-    <div class="grid">
-      <div class="tile"><strong>Load URLs</strong>Try sites that allow framing, internal tools, or your own builds.</div>
-      <div class="tile"><strong>Shoot</strong>Right click or Shift + click if your trackpad makes right click annoying.</div>
-      <div class="tile"><strong>Reset</strong>Clear the damage layer anytime and go again.</div>
-    </div>
-  </section>
-</body>
-</html>`;
+      const demoSvg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+          <defs>
+            <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#7c5cff" />
+              <stop offset="55%" stop-color="#111827" />
+              <stop offset="100%" stop-color="#050816" />
+            </linearGradient>
+            <radialGradient id="glow" cx="20%" cy="20%" r="60%">
+              <stop offset="0%" stop-color="rgba(255,255,255,0.28)" />
+              <stop offset="100%" stop-color="rgba(255,255,255,0)" />
+            </radialGradient>
+          </defs>
+          <rect width="1600" height="1000" fill="url(#bg)" />
+          <rect width="1600" height="1000" fill="url(#glow)" />
+          <rect x="130" y="120" width="1340" height="760" rx="34" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)" />
+          <text x="210" y="250" fill="#ffffff" font-size="88" font-family="Arial, sans-serif" font-weight="700">Shatter screenshot mode</text>
+          <text x="210" y="330" fill="rgba(255,255,255,0.82)" font-size="34" font-family="Arial, sans-serif">Capture any URL server-side, then turn the result into flying glass.</text>
+          <rect x="210" y="420" width="320" height="170" rx="26" fill="rgba(0,0,0,0.28)" stroke="rgba(255,255,255,0.1)" />
+          <rect x="560" y="420" width="320" height="170" rx="26" fill="rgba(0,0,0,0.28)" stroke="rgba(255,255,255,0.1)" />
+          <rect x="910" y="420" width="320" height="170" rx="26" fill="rgba(0,0,0,0.28)" stroke="rgba(255,255,255,0.1)" />
+          <text x="240" y="485" fill="#fff" font-size="34" font-family="Arial, sans-serif" font-weight="700">1. Capture</text>
+          <text x="240" y="535" fill="rgba(255,255,255,0.8)" font-size="24" font-family="Arial, sans-serif">Use Playwright to grab a full-page PNG.</text>
+          <text x="590" y="485" fill="#fff" font-size="34" font-family="Arial, sans-serif" font-weight="700">2. Blast</text>
+          <text x="590" y="535" fill="rgba(255,255,255,0.8)" font-size="24" font-family="Arial, sans-serif">Right click or Shift + click to shatter.</text>
+          <text x="940" y="485" fill="#fff" font-size="34" font-family="Arial, sans-serif" font-weight="700">3. Reset</text>
+          <text x="940" y="535" fill="rgba(255,255,255,0.8)" font-size="24" font-family="Arial, sans-serif">Reload the same shot or clear the damage.</text>
+        </svg>`;
 
-      const frame = document.getElementById("siteFrame");
+      const shotImage = document.getElementById("shotImage");
       const canvas = document.getElementById("fxCanvas");
       const ctx = canvas.getContext("2d");
       const sourceLayer = document.createElement("canvas");
@@ -350,9 +313,8 @@
       let pointerY = 0;
       let hasPointer = false;
       let lastTime = performance.now();
-      let latestFrameImage = null;
-      let currentSourceMode = "demo";
-      let currentUrl = "about:srcdoc";
+      let loadedImage = null;
+      let currentUrl = "demo";
 
       function setStatus(text, hint) {
         statusLabel.textContent = text;
@@ -397,6 +359,20 @@
           x: (event.clientX - rect.left) * dpr,
           y: (event.clientY - rect.top) * dpr,
         };
+      }
+
+      function drawImageCover(context, image, width, height) {
+        if (!image) {
+          context.fillStyle = "#0a0f1f";
+          context.fillRect(0, 0, width, height);
+          return;
+        }
+        const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+        const drawWidth = image.naturalWidth * scale;
+        const drawHeight = image.naturalHeight * scale;
+        const x = (width - drawWidth) / 2;
+        const y = (height - drawHeight) / 2;
+        context.drawImage(image, x, y, drawWidth, drawHeight);
       }
 
       function shootAt(x, y) {
@@ -480,22 +456,12 @@
 
       function drawBaseLayer() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (latestFrameImage) {
-          ctx.drawImage(latestFrameImage, 0, 0, canvas.width, canvas.height);
-        } else {
-          ctx.fillStyle = "#0a0f1f";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
+        drawImageCover(ctx, loadedImage, canvas.width, canvas.height);
       }
 
       function syncSourceLayer() {
         sourceCtx.clearRect(0, 0, sourceLayer.width, sourceLayer.height);
-        if (latestFrameImage) {
-          sourceCtx.drawImage(latestFrameImage, 0, 0, sourceLayer.width, sourceLayer.height);
-        } else {
-          sourceCtx.fillStyle = "#0a0f1f";
-          sourceCtx.fillRect(0, 0, sourceLayer.width, sourceLayer.height);
-        }
+        drawImageCover(sourceCtx, loadedImage, sourceLayer.width, sourceLayer.height);
       }
 
       function drawHoleWarps() {
@@ -636,92 +602,59 @@
         requestAnimationFrame(render);
       }
 
-      async function captureFrame() {
-        resizeCanvas();
-        try {
-          if (currentSourceMode === "demo") {
-            const svg = `
-              <svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}">
-                <foreignObject width="100%" height="100%">
-                  <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;overflow:hidden">${demoHtml}</div>
-                </foreignObject>
-              </svg>`;
-            const img = new Image();
-            await new Promise((resolve, reject) => {
-              img.onload = resolve;
-              img.onerror = reject;
-              img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-            });
-            latestFrameImage = img;
-            setStatus("Demo page loaded.", "This local page always supports the full shatter effect.");
-            return;
-          }
-
-          const doc = frame.contentDocument;
-          if (!doc) throw new Error("No frame document available.");
-          const body = doc.body;
-          const html = doc.documentElement;
-          if (!body || !html) throw new Error("Frame document missing body.");
-
-          const cloned = doc.documentElement.cloneNode(true);
-          const serialized = new XMLSerializer().serializeToString(cloned);
-          const width = Math.max(html.scrollWidth, html.clientWidth, body.scrollWidth, body.clientWidth);
-          const height = Math.max(html.scrollHeight, html.clientHeight, body.scrollHeight, body.clientHeight);
-          const svg = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-              <foreignObject width="100%" height="100%">${serialized}</foreignObject>
-            </svg>`;
-          const img = new Image();
-          await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
-            img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-          });
-          latestFrameImage = img;
-          setStatus(`Loaded ${currentUrl}`, "Page captured into the shatter layer.");
-        } catch (error) {
-          latestFrameImage = null;
-          setStatus("Loaded page, but screenshot capture is limited.", "The site is probably cross-origin or protected. You can still shoot the overlay, or use the demo page.");
-        }
+      async function loadImage(src) {
+        const img = new Image();
+        img.decoding = "async";
+        img.src = src;
+        await img.decode();
+        loadedImage = img;
+        shotImage.src = src;
       }
 
       async function loadDemo() {
-        currentSourceMode = "demo";
         currentUrl = "demo";
-        frame.srcdoc = demoHtml;
         resetDamage();
-        await captureFrame();
+        await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(demoSvg)}`);
+        setStatus("Demo screenshot loaded.", "This local shot guarantees the shatter effect works.");
       }
 
-      async function loadUrl(raw) {
+      async function captureUrl(raw) {
         const url = normalizeUrl(raw);
         if (!url) {
           setStatus("Enter a URL first.", "Try example.com or a site you control.");
           return;
         }
-        currentSourceMode = "url";
+
         currentUrl = url;
         resetDamage();
-        setStatus(`Loading ${url}...`, "If the site blocks framing, switch back to the demo page.");
-        frame.srcdoc = "";
-        frame.src = url;
+        setStatus(`Capturing ${url}...`, "Using the local screenshot endpoint.");
+
+        try {
+          const response = await fetch(`/api/screenshot?url=${encodeURIComponent(url)}`, { cache: "no-store" });
+          if (!response.ok) {
+            const payload = await response.json().catch(() => ({}));
+            throw new Error(payload.detail || payload.error || `Screenshot request failed (${response.status})`);
+          }
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          await loadImage(objectUrl);
+          setStatus(`Captured ${url}`, "Now shoot the screenshot to pieces.");
+        } catch (error) {
+          setStatus("Screenshot capture failed.", error instanceof Error ? error.message : String(error));
+        }
       }
 
-      frame.addEventListener("load", () => {
-        captureFrame();
-      });
-
-      loadBtn.addEventListener("click", () => loadUrl(urlInput.value));
+      loadBtn.addEventListener("click", () => captureUrl(urlInput.value));
       demoBtn.addEventListener("click", () => loadDemo());
       resetBtn.addEventListener("click", () => {
         resetDamage();
-        setStatus(`Damage reset on ${currentSourceMode === "demo" ? "demo page" : currentUrl}.`, hintLabel.textContent);
+        setStatus(`Damage reset on ${currentUrl}.`, hintLabel.textContent);
       });
 
       urlInput.addEventListener("keydown", (event) => {
         if (event.key === "Enter") {
           event.preventDefault();
-          loadUrl(urlInput.value);
+          captureUrl(urlInput.value);
         }
       });
 
@@ -747,7 +680,6 @@
 
       new ResizeObserver(() => {
         resizeCanvas();
-        captureFrame();
       }).observe(frameWrap);
 
       loadDemo();
