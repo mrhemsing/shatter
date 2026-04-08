@@ -9,6 +9,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SHOT_TIMEOUT_MS = 25000;
+const CAPTURE_WIDTH = 1440;
+const CAPTURE_HEIGHT = 2200;
+const CAPTURE_WAIT_MS = 1500;
 
 let browserPromise;
 
@@ -41,16 +44,16 @@ app.get("/api/screenshot", async (req, res) => {
   try {
     const browser = await ensureBrowser();
     context = await browser.newContext({
-      viewport: { width: 1440, height: 900 },
+      viewport: { width: CAPTURE_WIDTH, height: CAPTURE_HEIGHT },
       deviceScaleFactor: 1,
     });
     page = await context.newPage();
     page.setDefaultNavigationTimeout(SHOT_TIMEOUT_MS);
     page.setDefaultTimeout(SHOT_TIMEOUT_MS);
 
-    await page.goto(url, { waitUntil: "networkidle", timeout: SHOT_TIMEOUT_MS });
-    await page.screenshot({ type: "png", fullPage: true, animations: "disabled" });
-    const image = await page.screenshot({ type: "png", fullPage: true, animations: "disabled" });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: SHOT_TIMEOUT_MS });
+    await page.waitForTimeout(CAPTURE_WAIT_MS);
+    const image = await page.screenshot({ type: "png", fullPage: false, animations: "disabled" });
 
     res.setHeader("Content-Type", "image/png");
     res.setHeader("Cache-Control", "no-store");
