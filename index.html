@@ -71,7 +71,7 @@
 
       .controls {
         display: grid;
-        grid-template-columns: minmax(240px, 1fr) auto auto auto;
+        grid-template-columns: minmax(240px, 1fr) auto auto auto auto auto;
         gap: 10px;
       }
 
@@ -207,7 +207,7 @@
 
       @media (max-width: 880px) {
         .controls {
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: 1fr 1fr 1fr;
         }
 
         #frameWrap {
@@ -239,6 +239,17 @@
 
       <div class="controls">
         <input id="urlInput" class="field" type="text" value="https://example.com" spellcheck="false" />
+        <select id="presetSelect" class="field" aria-label="Capture preset">
+          <option value="desktop">Desktop</option>
+          <option value="laptop">Laptop</option>
+          <option value="mobile">Mobile</option>
+        </select>
+        <select id="waitSelect" class="field" aria-label="Wait before capture">
+          <option value="500">0.5s wait</option>
+          <option value="1500" selected>1.5s wait</option>
+          <option value="3000">3s wait</option>
+          <option value="5000">5s wait</option>
+        </select>
         <button id="loadBtn" class="button primary" type="button">Capture URL</button>
         <button id="resetBtn" class="button ghost" type="button">Reset Damage</button>
         <button id="demoBtn" class="button warn" type="button">Load Demo Shot</button>
@@ -297,6 +308,8 @@
       const loadBtn = document.getElementById("loadBtn");
       const resetBtn = document.getElementById("resetBtn");
       const demoBtn = document.getElementById("demoBtn");
+      const presetSelect = document.getElementById("presetSelect");
+      const waitSelect = document.getElementById("waitSelect");
       const statusLabel = document.getElementById("statusLabel");
       const hintLabel = document.getElementById("hintLabel");
       const frameWrap = document.getElementById("frameWrap");
@@ -624,12 +637,15 @@
           return;
         }
 
+        const preset = presetSelect.value;
+        const wait = waitSelect.value;
         currentUrl = url;
         resetDamage();
-        setStatus(`Capturing ${url}...`, "Using the local screenshot endpoint.");
+        setStatus(`Capturing ${url}...`, `Preset: ${preset}, wait: ${Number(wait) / 1000}s.`);
 
         try {
-          const response = await fetch(`/api/screenshot?url=${encodeURIComponent(url)}`, { cache: "no-store" });
+          const query = new URLSearchParams({ url, preset, wait });
+          const response = await fetch(`/api/screenshot?${query.toString()}`, { cache: "no-store" });
           if (!response.ok) {
             const payload = await response.json().catch(() => ({}));
             throw new Error(payload.detail || payload.error || `Screenshot request failed (${response.status})`);
@@ -637,7 +653,7 @@
           const blob = await response.blob();
           const objectUrl = URL.createObjectURL(blob);
           await loadImage(objectUrl);
-          setStatus(`Captured ${url}`, "Now shoot the screenshot to pieces.");
+          setStatus(`Captured ${url}`, `Preset: ${preset}. Now shoot the screenshot to pieces.`);
         } catch (error) {
           setStatus("Screenshot capture failed.", error instanceof Error ? error.message : String(error));
         }
