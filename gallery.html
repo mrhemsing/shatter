@@ -229,7 +229,7 @@
       }
 
       function updatePhysics(dt) {
-        const floorY = canvas.height - 8 * (window.devicePixelRatio || 1);
+        const floorY = canvas.height - 2 * (window.devicePixelRatio || 1);
         for (const shard of shards) {
           if (shard.settled) continue;
           shard.vy += gravity * dt;
