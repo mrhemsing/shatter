@@ -230,6 +230,7 @@
       const sourceCtx = sourceLayer.getContext("2d");
       const damageLayer = document.createElement("canvas");
       const damageCtx = damageLayer.getContext("2d", { willReadFrequently: true });
+      let damageDirty = true;
       const resetBtn = document.getElementById("resetBtn");
       const hint = document.getElementById("hint");
       const rotatePrompt = document.getElementById("rotatePrompt");
@@ -352,6 +353,7 @@
         damageCtx.clearRect(0, 0, damageLayer.width, damageLayer.height);
         drawImageCover(damageCtx, img, damageLayer.width, damageLayer.height);
         punchHoleMask(damageCtx);
+        damageDirty = false;
       }
 
       function resetGame() {
@@ -448,6 +450,7 @@
         }
         holes.push({ x, y, r: radius });
         if (holes.length > maxHoles) holes.shift();
+        damageDirty = true;
         rebuildDamageLayer();
 
         for (let i = 0; i < 5; i++) {
@@ -702,8 +705,8 @@
 
         if (!isPortraitRotateScreen) {
           drawImageCover(ctx, img, canvas.width, canvas.height);
-          drawImageCover(sourceCtx, img, sourceLayer.width, sourceLayer.height);
-          rebuildDamageLayer();
+          if (damageDirty) rebuildDamageLayer();
+          ctx.drawImage(damageLayer, 0, 0);
           punchHoleMask(ctx);
           sourceCtx.clearRect(0, 0, sourceLayer.width, sourceLayer.height);
           sourceCtx.drawImage(damageLayer, 0, 0);
@@ -739,6 +742,7 @@
       let started = false;
       function startRenderLoop() {
         resizeCanvas();
+        damageDirty = true;
         rebuildDamageLayer();
         if (!started) {
           started = true;
