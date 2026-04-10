@@ -74,6 +74,7 @@
         user-select: none;
         -webkit-user-drag: none;
         pointer-events: none;
+        background: #000;
       }
 
       canvas {
@@ -88,7 +89,7 @@
   <body>
     <div id="hint">Click mouse to shoot!</div>
     <button id="resetBtn" type="button">Reset</button>
-    <img id="bg" src="/gallery-images/upscaled-gallery.webp" alt="Shooting gallery" />
+    <video id="bg" src="/gallery-images/test.mp4" autoplay muted loop playsinline></video>
     <canvas id="fx"></canvas>
 
     <script>
@@ -140,8 +141,8 @@
       }
 
       function drawImageCover(context, image, width, height) {
-        const imageWidth = image.naturalWidth || image.width || width;
-        const imageHeight = image.naturalHeight || image.height || height;
+        const imageWidth = image.videoWidth || image.naturalWidth || image.width || width;
+        const imageHeight = image.videoHeight || image.naturalHeight || image.height || height;
         const scale = Math.max(width / imageWidth, height / imageHeight);
         const drawWidth = imageWidth * scale;
         const drawHeight = imageHeight * scale;
@@ -428,14 +429,16 @@
         shootAt(p.x, p.y);
       });
 
-      img.addEventListener("load", () => {
+      function startRenderLoop() {
         resizeCanvas();
         render();
-      });
+      }
 
-      if (img.complete) {
-        resizeCanvas();
-        render();
+      img.addEventListener("loadeddata", startRenderLoop);
+      img.addEventListener("canplay", startRenderLoop);
+
+      if (img.readyState >= 2) {
+        startRenderLoop();
       }
 
       showHint();
