@@ -227,7 +227,9 @@
       function drawImageCover(context, image, width, height) {
         const imageWidth = image.videoWidth || image.naturalWidth || image.width || width;
         const imageHeight = image.videoHeight || image.naturalHeight || image.height || height;
-        const scale = Math.max(width / imageWidth, height / imageHeight);
+        const baseScale = Math.max(width / imageWidth, height / imageHeight);
+        const portraitScale = isMobilePortraitMode() ? 0.5 : 1;
+        const scale = baseScale * portraitScale;
         const drawWidth = imageWidth * scale;
         const drawHeight = imageHeight * scale;
         const x = (width - drawWidth) / 2;
