@@ -39,6 +39,25 @@
         background: rgba(20, 28, 54, 0.9);
       }
 
+      #experimentLink {
+        position: fixed;
+        top: 16px;
+        right: 96px;
+        z-index: 20;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: rgba(10, 14, 32, 0.58);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: rgba(255,255,255,0.88);
+        font: 500 13px/1.2 Inter, system-ui, sans-serif;
+        text-decoration: none;
+        backdrop-filter: blur(8px);
+      }
+
+      #experimentLink:hover {
+        background: rgba(20, 28, 54, 0.82);
+      }
+
       #hint {
         position: fixed;
         top: 50%;
@@ -137,18 +156,8 @@
           cursor: default;
         }
 
-        #resetBtn {
-          display: none;
-        }
-
-        #hint {
-          display: none;
-        }
-      }
-        #resetBtn {
-          display: none;
-        }
-
+        #resetBtn,
+        #experimentLink,
         #hint {
           display: none;
         }
@@ -181,6 +190,7 @@
   </head>
   <body>
     <div id="rotatePrompt"><div id="portraitStage"><video id="portraitVideo" src="/gallery-images/phone-portrait.mp4" autoplay muted loop playsinline></video></div><div id="rotatePromptText">Rotate your screen to start</div></div>
+    <a id="experimentLink" href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">a html-in-canvas experiment</a>
     <div id="hint">Click mouse to shoot!</div>
     <button id="resetBtn" type="button">Reset</button>
     <video id="bg" src="/gallery-images/gallery-4.mp4" autoplay muted loop playsinline></video>
