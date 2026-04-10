@@ -14,6 +14,45 @@
     font-family: "Press Start 2P", monospace;
   }
 
+  .fallback-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 32px;
+    background:
+      linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.45)),
+      url('./assets/shatter.png') center / cover no-repeat;
+    color: #fff;
+    z-index: 20;
+  }
+
+  .fallback-overlay.show {
+    display: flex;
+  }
+
+  .fallback-panel {
+    max-width: 760px;
+    background: rgba(0, 0, 0, 0.72);
+    border: 3px solid #fff;
+    padding: 24px;
+    line-height: 1.8;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.45);
+  }
+
+  .fallback-panel h2 {
+    font-size: 20px;
+    margin-bottom: 18px;
+    color: #fcc41c;
+  }
+
+  .fallback-panel p {
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
   #vid {
     position: fixed;
     top: -9999px; left: -9999px;
@@ -198,6 +237,14 @@
 
 <!-- Video element for webcam (off-screen, still active for pixel reads) -->
 <video id="vid" autoplay muted playsinline></video>
+<div id="fallbackOverlay" class="fallback-overlay" aria-live="polite">
+  <div class="fallback-panel">
+    <h2>Camera feed not visible</h2>
+    <p id="fallbackText">The demo loaded, but the live webcam background is not painting yet.</p>
+    <p>Try refreshing, closing other apps using the camera, or testing in a browser with full support for the HTML-in-canvas APIs this demo uses.</p>
+    <p>You can still right-click to test the shatter effect once the canvas is rendering.</p>
+  </div>
+</div>
 
 <canvas id="canvas" layoutsubtree>
   <div id="draw_element">
@@ -248,6 +295,8 @@ const ctx       = canvas.getContext("2d");
 const sourceLayer = document.createElement("canvas");
 const sourceCtx   = sourceLayer.getContext("2d");
 const videoEl   = document.getElementById("vid");
+const fallbackOverlay = document.getElementById("fallbackOverlay");
+const fallbackText = document.getElementById("fallbackText");
 
 // ── Shatter state ─────────────────────────────────────────
 
@@ -269,6 +318,8 @@ let handLandmarks = null;
 let prevThumbBent = false;
 let shotCount     = 0;
 let lastShootTime = 0;
+let cameraReady   = false;
+let cameraErrorMessage = "";
 
 // Smoothed pointer position (exponential moving average)
 let smoothX = -1, smoothY = -1;
@@ -430,13 +481,30 @@ function updatePhysics(dt) {
 // ── Drawing ───────────────────────────────────────────────
 
 function drawWebcam() {
-  if (videoEl.readyState < 2) return;
+  if (videoEl.readyState < 2 || !videoEl.videoWidth || !videoEl.videoHeight) return false;
   // Mirror horizontally so it feels like a mirror
   ctx.save();
   ctx.translate(canvas.width, 0);
   ctx.scale(-1, 1);
   ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
   ctx.restore();
+  return true;
+}
+
+function updateFallback() {
+  const unsupported = typeof ctx.drawElementImage !== "function";
+  const shouldShow = unsupported || !!cameraErrorMessage || !cameraReady;
+  if (!fallbackOverlay) return;
+  fallbackOverlay.classList.toggle("show", shouldShow);
+  if (!fallbackText) return;
+
+  if (unsupported) {
+    fallbackText.textContent = "This browser is missing the HTML-in-canvas API that this imported demo relies on.";
+  } else if (cameraErrorMessage) {
+    fallbackText.textContent = cameraErrorMessage;
+  } else if (!cameraReady) {
+    fallbackText.textContent = "Camera permission may be granted, but the video feed is not becoming visible on canvas yet.";
+  }
 }
 
 function drawHoleWarps() {
@@ -605,7 +673,8 @@ canvas.onpaint = () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // 1) Webcam fills full canvas as background (mirrored)
-  drawWebcam();
+  cameraReady = drawWebcam();
+  updateFallback();
 
   // 2) HTML overlay: top bar is opaque mac chrome; cam-slot is transparent
   if (drawElement instanceof HTMLElement && drawElement.parentElement === canvas) {
@@ -650,8 +719,16 @@ async function initHands() {
     });
     videoEl.srcObject = stream;
     await videoEl.play();
+    await new Promise((resolve) => {
+      if (videoEl.readyState >= 2 && videoEl.videoWidth) return resolve();
+      videoEl.onloadedmetadata = () => resolve();
+      setTimeout(resolve, 2000);
+    });
+    cameraErrorMessage = "";
   } catch (err) {
     console.warn("Webcam error:", err);
+    cameraErrorMessage = `Webcam error: ${err?.message || err}`;
+    updateFallback();
     return;
   }
 
