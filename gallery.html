@@ -148,7 +148,8 @@
         const drawWidth = imageWidth * scale;
         const drawHeight = imageHeight * scale;
         const x = (width - drawWidth) / 2;
-        const y = (height - drawHeight) / 2;
+        const desktopOffset = window.innerWidth >= 1024 ? -30 * (window.devicePixelRatio || 1) : 0;
+        const y = ((height - drawHeight) / 2) + desktopOffset;
         context.drawImage(image, x, y, drawWidth, drawHeight);
       }
 
