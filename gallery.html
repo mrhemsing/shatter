@@ -405,15 +405,34 @@
         const sampleW = Math.max(1, Math.round(sw));
         const sampleH = Math.max(1, Math.round(sh));
         const data = damageCtx.getImageData(Math.round(sx), Math.round(sy), sampleW, sampleH).data;
+        let visible = 0;
         for (let i = 3; i < data.length; i += 4) {
-          if (data[i] > 8) return true;
+          if (data[i] > 8) visible += 1;
         }
-        return false;
+        const total = Math.max(1, data.length / 4);
+        return (visible / total) > 0.35;
+      }
+
+      function regionStillVisible(x, y, radius) {
+        const sx = Math.max(0, Math.round(x - radius));
+        const sy = Math.max(0, Math.round(y - radius));
+        const sw = Math.min(damageLayer.width - sx, Math.max(1, Math.round(radius * 2)));
+        const sh = Math.min(damageLayer.height - sy, Math.max(1, Math.round(radius * 2)));
+        const data = damageCtx.getImageData(sx, sy, sw, sh).data;
+        let visible = 0;
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] > 8) visible += 1;
+        }
+        const total = Math.max(1, data.length / 4);
+        return (visible / total) > 0.12;
       }
 
       function shootAt(x, y) {
         const dpr = window.devicePixelRatio || 1;
         const radius = rand(20, 38) * dpr;
+        if (!regionStillVisible(x, y, radius)) {
+          return;
+        }
         holes.push({ x, y, r: radius });
         if (holes.length > maxHoles) holes.shift();
 
