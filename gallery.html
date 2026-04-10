@@ -71,12 +71,10 @@
         inset: 0;
         z-index: 25;
         display: none;
-        flex-direction: column;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
         text-align: center;
-        gap: 20px;
-        padding: 24px;
+        padding: 18vh 24px 24px;
         background: rgba(0, 0, 0, 0.12);
         color: white;
         font: 600 22px/1.4 Inter, system-ui, sans-serif;
@@ -84,7 +82,7 @@
       }
 
       #rotatePromptText {
-        order: 1;
+        width: 100%;
         text-shadow: 0 3px 14px rgba(0,0,0,0.7);
       }
 
@@ -93,6 +91,41 @@
       }
 
       @media (orientation: portrait) and (max-width: 900px) {
+        #bg {
+          width: 50vw;
+          height: 50vh;
+          top: 50%;
+          left: 50%;
+          right: auto;
+          bottom: auto;
+          transform: translate(-50%, -50%);
+          object-fit: contain;
+        }
+
+        #rotatePrompt {
+          padding-top: 11vh;
+        }
+
+        #rotatePromptText {
+          font-size: 20px;
+        }
+
+        canvas {
+          display: none;
+        }
+
+        body {
+          cursor: default;
+        }
+
+        #resetBtn {
+          display: none;
+        }
+
+        #hint {
+          display: none;
+        }
+      }
         #resetBtn {
           display: none;
         }
