@@ -126,17 +126,16 @@
         backdrop-filter: blur(1px);
       }
 
+      #rotatePrompt.show {
+        display: flex;
+      }
+
       #rotatePromptText {
         width: 100%;
         position: relative;
         z-index: 2;
-        margin-top: -125px;
+        margin-top: -100px;
         text-shadow: 0 3px 14px rgba(0,0,0,0.7);
-      }
-
-      #portraitStage {
-        position: relative;
-        z-index: 1;
       }
 
       #portraitStage {
@@ -144,6 +143,7 @@
         width: min(50vw, 220px);
         aspect-ratio: 9 / 16;
         position: relative;
+        z-index: 1;
       }
 
       #portraitVideo {
@@ -153,11 +153,19 @@
         display: block;
       }
 
-      @media (orientation: portrait) and (max-width: 900px) {
-        #bg {
-          display: none;
-        }
+      #bg {
+        display: none;
+      }
 
+      canvas {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        display: block;
+      }
+
+      @media (orientation: portrait) and (max-width: 900px) {
         #rotatePrompt {
           display: flex;
         }
@@ -187,59 +195,35 @@
           display: none;
         }
       }
-
-      #rotatePrompt.show {
-        display: flex;
-      }
-
-      #bg {
-        position: fixed;
-        inset: 0;
-        width: 100vw;
-        height: 100vh;
-        object-fit: cover;
-        user-select: none;
-        -webkit-user-drag: none;
-        pointer-events: none;
-        background: #000;
-      }
-
-      canvas {
-        position: fixed;
-        inset: 0;
-        width: 100vw;
-        height: 100vh;
-        display: block;
-      }
     </style>
   </head>
   <body>
-    <div id="rotatePrompt"><div id="portraitStage"><video id="portraitVideo" src="/gallery-images/phone-portrait.mp4" autoplay muted loop playsinline></video></div><div id="rotatePromptText">Rotate your screen to start</div></div>
+    <div id="rotatePrompt">
+      <div id="portraitStage">
+        <video id="portraitVideo" src="/gallery-images/phone-portrait.mp4" autoplay muted loop playsinline></video>
+      </div>
+      <div id="rotatePromptText">Rotate your screen to start</div>
+    </div>
     <a id="experimentLink" href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">a html-in-canvas experiment</a>
     <a id="badgeLink" href="https://b-average.com" target="_blank" rel="noreferrer">B AVERAGE</a>
     <div id="hint">Click mouse to shoot!</div>
     <button id="resetBtn" type="button">Reset</button>
-    <video id="bg" src="/gallery-images/gallery-4.mp4" autoplay muted loop playsinline></video>
+    <img id="bg" src="/gallery-images/upscaled-2.jpeg" alt="Gallery background" />
     <canvas id="fx"></canvas>
 
     <script>
-      let img = document.getElementById("bg");
+      const img = document.getElementById("bg");
       const canvas = document.getElementById("fx");
       const ctx = canvas.getContext("2d");
-      const sourceLayer = document.createElement("canvas");
-      const sourceCtx = sourceLayer.getContext("2d");
-      const damageLayer = document.createElement("canvas");
-      const damageCtx = damageLayer.getContext("2d", { willReadFrequently: true });
-      let damageDirty = true;
+      const worldLayer = document.createElement("canvas");
+      const worldCtx = worldLayer.getContext("2d", { willReadFrequently: true });
       const resetBtn = document.getElementById("resetBtn");
       const hint = document.getElementById("hint");
       const rotatePrompt = document.getElementById("rotatePrompt");
       const portraitVideo = document.getElementById("portraitVideo");
 
-      const holes = [];
       const shards = [];
       const sparks = [];
-      const maxHoles = 80;
       const maxShards = 260;
       const gravity = 1800;
       const settleDelayMs = 1800;
@@ -250,9 +234,26 @@
       let hasPointer = false;
       let lastTime = performance.now();
       let hintTimeout = null;
+      let imageReady = false;
+      let baseLayout = null;
 
       function rand(min, max) {
         return min + Math.random() * (max - min);
+      }
+
+      function isMobilePortraitMode() {
+        return window.innerWidth <= 900 && window.innerHeight > window.innerWidth;
+      }
+
+      function isMobileMode() {
+        return window.innerWidth <= 900;
+      }
+
+      function updateRotatePrompt() {
+        const show = isMobilePortraitMode();
+        rotatePrompt.classList.toggle("show", show);
+        if (show) portraitVideo.play().catch(() => {});
+        else portraitVideo.pause();
       }
 
       function resizeCanvas() {
@@ -261,12 +262,11 @@
         const height = Math.max(1, Math.round(window.innerHeight * dpr));
         canvas.width = width;
         canvas.height = height;
-        sourceLayer.width = width;
-        sourceLayer.height = height;
-        damageLayer.width = width;
-        damageLayer.height = height;
+        worldLayer.width = width;
+        worldLayer.height = height;
         pointerX = width / 2;
         pointerY = height / 2;
+        if (imageReady) rebuildWorld();
       }
 
       function pointFromEvent(event) {
@@ -278,105 +278,167 @@
         };
       }
 
-      function isMobilePortraitMode() {
-        return window.innerWidth <= 900 && window.innerHeight > window.innerWidth;
-      }
-
-      function isMobileMode() {
-        return window.innerWidth <= 900;
-      }
-
-      function syncMediaSource() {
-        const wantsPortrait = isMobilePortraitMode();
-        const nextSrc = "/gallery-images/upscaled-2.jpeg";
-        const isVideo = nextSrc.endsWith(".mp4");
-        if (img.dataset.src === nextSrc) return;
-
-        if (isVideo && img.tagName !== "VIDEO") {
-          const video = document.createElement("video");
-          video.id = "bg";
-          video.src = nextSrc;
-          video.autoplay = true;
-          video.muted = true;
-          video.loop = true;
-          video.playsInline = true;
-          video.dataset.src = nextSrc;
-          img.replaceWith(video);
-          img = video;
-        } else if (!isVideo && img.tagName !== "IMG") {
-          const image = document.createElement("img");
-          image.id = "bg";
-          image.src = nextSrc;
-          image.alt = "Gallery background";
-          image.dataset.src = nextSrc;
-          img.replaceWith(image);
-          img = image;
-        } else {
-          img.src = nextSrc;
-          img.dataset.src = nextSrc;
-        }
-      }
-
-      function updateRotatePrompt() {
-        const show = isMobilePortraitMode();
-        rotatePrompt.classList.toggle("show", show);
-        if (show) {
-          portraitVideo.play().catch(() => {});
-        } else {
-          portraitVideo.pause();
-        }
-      }
-
-      function drawImageCover(context, image, width, height) {
-        const imageWidth = image.videoWidth || image.naturalWidth || image.width || width;
-        const imageHeight = image.videoHeight || image.naturalHeight || image.height || height;
-        const baseScale = Math.max(width / imageWidth, height / imageHeight);
-        const scale = baseScale;
+      function computeImageLayout(width, height) {
+        const imageWidth = img.naturalWidth || img.width || width;
+        const imageHeight = img.naturalHeight || img.height || height;
+        const scale = Math.max(width / imageWidth, height / imageHeight);
         const drawWidth = imageWidth * scale;
         const drawHeight = imageHeight * scale;
         const x = (width - drawWidth) / 2;
         const desktopOffset = window.innerWidth >= 1024 ? -10 * (window.devicePixelRatio || 1) : 0;
         const y = ((height - drawHeight) / 2) + desktopOffset;
-        context.drawImage(image, x, y, drawWidth, drawHeight);
+        return { x, y, drawWidth, drawHeight };
+      }
+
+      function rebuildWorld() {
+        worldCtx.clearRect(0, 0, worldLayer.width, worldLayer.height);
+        baseLayout = computeImageLayout(worldLayer.width, worldLayer.height);
+        worldCtx.drawImage(img, baseLayout.x, baseLayout.y, baseLayout.drawWidth, baseLayout.drawHeight);
       }
 
       function showHint() {
-        if (!hint) return;
         hint.classList.remove("hidden");
         if (hintTimeout) clearTimeout(hintTimeout);
-        hintTimeout = setTimeout(() => {
-          hint.classList.add("hidden");
-        }, 2000);
-      }
-
-      function rebuildDamageLayer() {
-        damageCtx.clearRect(0, 0, damageLayer.width, damageLayer.height);
-        drawImageCover(damageCtx, img, damageLayer.width, damageLayer.height);
-        punchHoleMask(damageCtx);
-        damageDirty = false;
+        hintTimeout = setTimeout(() => hint.classList.add("hidden"), 2000);
       }
 
       function resetGame() {
-        holes.length = 0;
         shards.length = 0;
         sparks.length = 0;
-        rebuildDamageLayer();
+        rebuildWorld();
         showHint();
+      }
+
+      function getAlphaAt(x, y) {
+        const sx = Math.max(0, Math.min(worldLayer.width - 1, Math.round(x)));
+        const sy = Math.max(0, Math.min(worldLayer.height - 1, Math.round(y)));
+        return worldCtx.getImageData(sx, sy, 1, 1).data[3];
+      }
+
+      function makeShardMask(size, seed) {
+        const mask = document.createElement("canvas");
+        mask.width = size;
+        mask.height = size;
+        const mctx = mask.getContext("2d");
+        const points = 10;
+        const center = size / 2;
+        const baseR = size * 0.44;
+        mctx.beginPath();
+        for (let i = 0; i < points; i++) {
+          const angle = (i / points) * Math.PI * 2;
+          const noise = 0.7 + (((Math.sin(seed + i * 2.17) + 1) / 2) * 0.55);
+          const r = baseR * noise;
+          const px = center + Math.cos(angle) * r;
+          const py = center + Math.sin(angle) * r;
+          if (i === 0) mctx.moveTo(px, py);
+          else mctx.lineTo(px, py);
+        }
+        mctx.closePath();
+        mctx.fillStyle = "#fff";
+        mctx.fill();
+        return mask;
+      }
+
+      function carveShard(worldX, worldY, size) {
+        const sx = Math.round(worldX - size / 2);
+        const sy = Math.round(worldY - size / 2);
+        const clampedSx = Math.max(0, Math.min(worldLayer.width - size, sx));
+        const clampedSy = Math.max(0, Math.min(worldLayer.height - size, sy));
+        const mask = makeShardMask(size, worldX * 0.013 + worldY * 0.017 + size);
+
+        const shardCanvas = document.createElement("canvas");
+        shardCanvas.width = size;
+        shardCanvas.height = size;
+        const sctx = shardCanvas.getContext("2d");
+        sctx.drawImage(worldLayer, clampedSx, clampedSy, size, size, 0, 0, size, size);
+        sctx.globalCompositeOperation = "destination-in";
+        sctx.drawImage(mask, 0, 0);
+
+        const alpha = sctx.getImageData(0, 0, size, size).data;
+        let visible = 0;
+        for (let i = 3; i < alpha.length; i += 4) {
+          if (alpha[i] > 8) visible += 1;
+        }
+        if (visible < size * size * 0.06) {
+          return null;
+        }
+
+        worldCtx.save();
+        worldCtx.globalCompositeOperation = "destination-out";
+        worldCtx.drawImage(mask, clampedSx, clampedSy, size, size);
+        worldCtx.restore();
+
+        return {
+          image: shardCanvas,
+          size,
+          x: clampedSx + size / 2,
+          y: clampedSy + size / 2,
+          rot: rand(-0.4, 0.4),
+          vr: rand(-6, 6),
+          vx: 0,
+          vy: 0,
+          settled: false,
+          groundedAt: null,
+          settledAt: null,
+        };
+      }
+
+      function shootAt(x, y) {
+        if (getAlphaAt(x, y) <= 8) return;
+
+        const dpr = window.devicePixelRatio || 1;
+        const radius = rand(20, 38) * dpr;
+        let spawned = 0;
+
+        for (let i = 0; i < 5; i++) {
+          const angle = rand(0, Math.PI * 2);
+          const dist = Math.sqrt(Math.random()) * radius;
+          const cx = x + Math.cos(angle) * dist;
+          const cy = y + Math.sin(angle) * dist;
+          if (getAlphaAt(cx, cy) <= 8) continue;
+
+          const size = Math.round(rand(28, 70) * dpr);
+          const shard = carveShard(cx, cy, size);
+          if (!shard) continue;
+
+          const dx = cx - x;
+          const dy = cy - y;
+          const len = Math.hypot(dx, dy) || 1;
+          shard.vx = (dx / len) * rand(240, 760) + rand(-60, 60);
+          shard.vy = (dy / len) * rand(200, 620) - rand(260, 820);
+          shards.push(shard);
+          spawned += 1;
+        }
+
+        if (!spawned) return;
+        if (shards.length > maxShards) shards.splice(0, shards.length - maxShards);
+
+        for (let i = 0; i < 8; i++) {
+          const angle = rand(0, Math.PI * 2);
+          const speed = rand(240, 820);
+          const life = rand(0.15, 0.45);
+          sparks.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life,
+            maxLife: life,
+          });
+        }
       }
 
       function wakeUnsupportedSettledShards() {
         for (const shard of shards) {
           if (!shard.settled) continue;
-
           const floorY = canvas.height - 2 * (window.devicePixelRatio || 1);
-          const isOnFloor = shard.y + shard.sh / 2 >= floorY - 1;
+          const isOnFloor = shard.y + shard.size / 2 >= floorY - 1;
           if (isOnFloor) continue;
 
           let hasSupport = false;
           for (const other of shards) {
             if (other === shard || !other.settled) continue;
-            const overlapsX = Math.abs(shard.x - other.x) < (shard.sw + other.sw) * 0.38;
-            const sittingOnOther = Math.abs((shard.y + shard.sh / 2) - (other.y - other.sh / 2)) < 6 * (window.devicePixelRatio || 1);
+            const overlapsX = Math.abs(shard.x - other.x) < (shard.size + other.size) * 0.38;
+            const sittingOnOther = Math.abs((shard.y + shard.size / 2) - (other.y - other.size / 2)) < 6 * (window.devicePixelRatio || 1);
             if (overlapsX && sittingOnOther) {
               hasSupport = true;
               break;
@@ -404,101 +466,7 @@
             removedAny = true;
           }
         }
-        if (removedAny) {
-          wakeUnsupportedSettledShards();
-        }
-      }
-
-      function hasVisiblePixels(sx, sy, sw, sh) {
-        const sampleW = Math.max(1, Math.round(sw));
-        const sampleH = Math.max(1, Math.round(sh));
-        const data = damageCtx.getImageData(Math.round(sx), Math.round(sy), sampleW, sampleH).data;
-        let visible = 0;
-        for (let i = 3; i < data.length; i += 4) {
-          if (data[i] > 8) visible += 1;
-        }
-        const total = Math.max(1, data.length / 4);
-        return (visible / total) > 0.35;
-      }
-
-      function regionStillVisible(x, y, radius) {
-        const sx = Math.max(0, Math.round(x - radius));
-        const sy = Math.max(0, Math.round(y - radius));
-        const sw = Math.min(damageLayer.width - sx, Math.max(1, Math.round(radius * 2)));
-        const sh = Math.min(damageLayer.height - sy, Math.max(1, Math.round(radius * 2)));
-        const data = damageCtx.getImageData(sx, sy, sw, sh).data;
-        let visible = 0;
-        for (let i = 3; i < data.length; i += 4) {
-          if (data[i] > 8) visible += 1;
-        }
-        const total = Math.max(1, data.length / 4);
-        return (visible / total) > 0.22;
-      }
-
-      function centerPixelVisible(x, y) {
-        const sx = Math.max(0, Math.min(damageLayer.width - 1, Math.round(x)));
-        const sy = Math.max(0, Math.min(damageLayer.height - 1, Math.round(y)));
-        const data = damageCtx.getImageData(sx, sy, 1, 1).data;
-        return data[3] > 8;
-      }
-
-      function shootAt(x, y) {
-        const dpr = window.devicePixelRatio || 1;
-        const radius = rand(20, 38) * dpr;
-        if (!centerPixelVisible(x, y) || !regionStillVisible(x, y, radius)) {
-          return;
-        }
-        holes.push({ x, y, r: radius });
-        if (holes.length > maxHoles) holes.shift();
-        damageDirty = true;
-        rebuildDamageLayer();
-
-        for (let i = 0; i < 5; i++) {
-          const angle = rand(0, Math.PI * 2);
-          const dist = Math.sqrt(Math.random()) * radius;
-          const cx = x + Math.cos(angle) * dist;
-          const cy = y + Math.sin(angle) * dist;
-          const w = rand(24, 72) * dpr;
-          const h = rand(24, 72) * dpr;
-          const sx = Math.max(0, Math.min(sourceLayer.width - w, cx - w * 0.5));
-          const sy = Math.max(0, Math.min(sourceLayer.height - h, cy - h * 0.5));
-          if (!hasVisiblePixels(sx, sy, w, h)) {
-            continue;
-          }
-
-          const dx = cx - x;
-          const dy = cy - y;
-          const len = Math.hypot(dx, dy) || 1;
-          shards.push({
-            sx, sy, sw: w, sh: h,
-            x: sx + w * 0.5,
-            y: sy + h * 0.5,
-            vx: (dx / len) * rand(240, 760) + rand(-60, 60),
-            vy: (dy / len) * rand(200, 620) - rand(260, 820),
-            rot: rand(-0.4, 0.4),
-            vr: rand(-6, 6),
-            settled: false,
-            groundedAt: null,
-            settledAt: null,
-          });
-        }
-
-        if (shards.length > maxShards) {
-          shards.splice(0, shards.length - maxShards);
-        }
-
-        for (let i = 0; i < 8; i++) {
-          const angle = rand(0, Math.PI * 2);
-          const speed = rand(240, 820);
-          const life = rand(0.15, 0.45);
-          sparks.push({
-            x, y,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
-            life,
-            maxLife: life,
-          });
-        }
+        if (removedAny) wakeUnsupportedSettledShards();
       }
 
       function updatePhysics(dt) {
@@ -510,23 +478,23 @@
           shard.y += shard.vy * dt;
           shard.rot += shard.vr * dt;
 
-          if (shard.x - shard.sw / 2 < 0) {
-            shard.x = shard.sw / 2;
+          if (shard.x - shard.size / 2 < 0) {
+            shard.x = shard.size / 2;
             shard.vx *= -0.2;
           }
-          if (shard.x + shard.sw / 2 > canvas.width) {
-            shard.x = canvas.width - shard.sw / 2;
+          if (shard.x + shard.size / 2 > canvas.width) {
+            shard.x = canvas.width - shard.size / 2;
             shard.vx *= -0.2;
           }
 
           let restingOnSettledPiece = false;
           for (const other of shards) {
             if (other === shard || !other.settled) continue;
-            const overlapsX = Math.abs(shard.x - other.x) < (shard.sw + other.sw) * 0.38;
-            const touchingTop = shard.y + shard.sh / 2 >= other.y - other.sh / 2 && shard.y < other.y;
+            const overlapsX = Math.abs(shard.x - other.x) < (shard.size + other.size) * 0.38;
+            const touchingTop = shard.y + shard.size / 2 >= other.y - other.size / 2 && shard.y < other.y;
             if (overlapsX && touchingTop) {
-              const topY = other.y - other.sh / 2;
-              shard.y = topY - shard.sh / 2;
+              const topY = other.y - other.size / 2;
+              shard.y = topY - shard.size / 2;
               shard.vx *= 0.75;
               shard.vy *= -0.05;
               shard.vr *= 0.7;
@@ -536,10 +504,10 @@
             }
           }
 
-          const shardBottom = shard.y + shard.sh / 2;
+          const shardBottom = shard.y + shard.size / 2;
           const onFloor = shardBottom >= floorY;
           if (onFloor) {
-            shard.y = floorY - shard.sh / 2;
+            shard.y = floorY - shard.size / 2;
             shard.vy *= -0.16;
             shard.vx *= 0.82;
             shard.vr *= 0.8;
@@ -576,57 +544,15 @@
         }
       }
 
-      function holePath(hole, scale = 1) {
-        const jag = hole.r * 0.22 * scale;
-        ctx.beginPath();
-        for (let i = 0; i < 20; i++) {
-          const a = (i / 20) * Math.PI * 2;
-          const rr = (hole.r * scale) + Math.sin(a * 6 + hole.x * 0.003) * jag + Math.cos(a * 3.7 + hole.y * 0.004) * jag * 0.6;
-          const px = hole.x + Math.cos(a) * rr;
-          const py = hole.y + Math.sin(a) * rr;
-          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-        }
-        ctx.closePath();
-      }
-
-      function punchHoleMask(context) {
-        context.save();
-        context.globalCompositeOperation = "destination-out";
-        context.fillStyle = "#000";
-        for (const hole of holes) {
-          holePath(hole, 1);
-          context.fill();
-        }
-        context.restore();
-      }
-
-      function drawHoleRims() {
-        for (const hole of holes) {
-          const shadow = ctx.createRadialGradient(hole.x, hole.y, hole.r * 0.2, hole.x, hole.y, hole.r * 2.2);
-          shadow.addColorStop(0, "rgba(0,0,0,0.65)");
-          shadow.addColorStop(0.45, "rgba(0,0,0,0.2)");
-          shadow.addColorStop(1, "rgba(0,0,0,0)");
-          ctx.fillStyle = shadow;
-          ctx.beginPath();
-          ctx.arc(hole.x, hole.y, hole.r * 2.2, 0, Math.PI * 2);
-          ctx.fill();
-
-          holePath(hole, 1.04);
-          ctx.strokeStyle = "rgba(255,255,255,0.18)";
-          ctx.lineWidth = 2 * (window.devicePixelRatio || 1);
-          ctx.stroke();
-        }
-      }
-
       function drawShards() {
         for (const shard of shards) {
           ctx.save();
           ctx.translate(shard.x, shard.y);
           ctx.rotate(shard.rot);
-          ctx.drawImage(sourceLayer, shard.sx, shard.sy, shard.sw, shard.sh, -shard.sw / 2, -shard.sh / 2, shard.sw, shard.sh);
+          ctx.drawImage(shard.image, -shard.size / 2, -shard.size / 2, shard.size, shard.size);
           ctx.strokeStyle = "rgba(255,255,255,0.18)";
           ctx.lineWidth = 1.5 * (window.devicePixelRatio || 1);
-          ctx.strokeRect(-shard.sw / 2, -shard.sh / 2, shard.sw, shard.sh);
+          ctx.strokeRect(-shard.size / 2, -shard.size / 2, shard.size, shard.size);
           ctx.restore();
         }
       }
@@ -641,31 +567,8 @@
         }
       }
 
-      function drawCrosshair() {
-        if (!hasPointer) return;
-        const dpr = window.devicePixelRatio || 1;
-        const r = 16 * dpr;
-        const tick = 7 * dpr;
-        ctx.strokeStyle = "rgba(255, 77, 103, 0.95)";
-        ctx.lineWidth = 2.5 * dpr;
-        ctx.beginPath();
-        ctx.arc(pointerX, pointerY, r, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(pointerX, pointerY - r - tick);
-        ctx.lineTo(pointerX, pointerY - r + tick);
-        ctx.moveTo(pointerX, pointerY + r - tick);
-        ctx.lineTo(pointerX, pointerY + r + tick);
-        ctx.moveTo(pointerX - r - tick, pointerY);
-        ctx.lineTo(pointerX - r + tick, pointerY);
-        ctx.moveTo(pointerX + r - tick, pointerY);
-        ctx.lineTo(pointerX + r + tick, pointerY);
-        ctx.stroke();
-      }
-
       function drawCrosshairOverlay() {
         if (!hasPointer) return;
-        const rect = canvas.getBoundingClientRect();
         const dpr = window.devicePixelRatio || 1;
         const x = pointerX / dpr;
         const y = pointerY / dpr;
@@ -701,16 +604,9 @@
 
         const isPortraitRotateScreen = isMobilePortraitMode();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        sourceCtx.clearRect(0, 0, sourceLayer.width, sourceLayer.height);
 
-        if (!isPortraitRotateScreen) {
-          drawImageCover(ctx, img, canvas.width, canvas.height);
-          if (damageDirty) rebuildDamageLayer();
-          ctx.drawImage(damageLayer, 0, 0);
-          punchHoleMask(ctx);
-          sourceCtx.clearRect(0, 0, sourceLayer.width, sourceLayer.height);
-          sourceCtx.drawImage(damageLayer, 0, 0);
-          drawHoleRims();
+        if (!isPortraitRotateScreen && imageReady) {
+          ctx.drawImage(worldLayer, 0, 0);
           drawShards();
           drawSparks();
           drawCrosshairOverlay();
@@ -719,7 +615,6 @@
         requestAnimationFrame(render);
       }
 
-      window.addEventListener("resize", resizeCanvas);
       resetBtn.addEventListener("click", resetGame);
       canvas.addEventListener("pointermove", (event) => {
         const p = pointFromEvent(event);
@@ -733,7 +628,7 @@
       canvas.addEventListener("contextmenu", (event) => event.preventDefault());
       canvas.addEventListener("pointerdown", (event) => {
         const wantsShoot = event.button === 2 || (event.button === 0 && event.shiftKey) || event.button === 0;
-        if (!wantsShoot) return;
+        if (!wantsShoot || isMobilePortraitMode()) return;
         event.preventDefault();
         const p = pointFromEvent(event);
         shootAt(p.x, p.y);
@@ -742,37 +637,23 @@
       let started = false;
       function startRenderLoop() {
         resizeCanvas();
-        damageDirty = true;
-        rebuildDamageLayer();
+        imageReady = true;
+        rebuildWorld();
         if (!started) {
           started = true;
           render();
         }
       }
 
-      function bindMediaListeners() {
-        if (img.tagName === "VIDEO") {
-          img.addEventListener("loadeddata", startRenderLoop, { once: true });
-          img.addEventListener("canplay", startRenderLoop, { once: true });
-          if (img.readyState >= 2) startRenderLoop();
-        } else {
-          img.addEventListener("load", startRenderLoop, { once: true });
-          if (img.complete) startRenderLoop();
-        }
-      }
-
-      function refreshMediaMode() {
-        syncMediaSource();
-        updateRotatePrompt();
-        bindMediaListeners();
-      }
+      img.addEventListener("load", startRenderLoop, { once: true });
+      if (img.complete) startRenderLoop();
 
       window.addEventListener("resize", () => {
-        refreshMediaMode();
+        updateRotatePrompt();
         resizeCanvas();
       });
 
-      refreshMediaMode();
+      updateRotatePrompt();
       showHint();
     </script>
   </body>
