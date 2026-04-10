@@ -77,6 +77,7 @@
       const maxHoles = 100;
       const maxShards = 500;
       const gravity = 1800;
+      const settleDelayMs = 1800;
       let pointerX = 0;
       let pointerY = 0;
       let hasPointer = false;
@@ -151,6 +152,7 @@
             rot: rand(-0.4, 0.4),
             vr: rand(-6, 6),
             settled: false,
+            groundedAt: null,
           });
         }
 
@@ -209,6 +211,7 @@
             shard.vy *= -0.16;
             shard.vx *= 0.82;
             shard.vr *= 0.8;
+            if (shard.groundedAt == null) shard.groundedAt = performance.now();
             if (Math.abs(shard.vy) < 45) {
               shard.vy = 0;
             }
@@ -218,9 +221,11 @@
             if (Math.abs(shard.vr) < 0.08) {
               shard.vr = 0;
             }
+          } else if (shard.vy !== 0) {
+            shard.groundedAt = null;
           }
 
-          if ((shard.y + shard.sh / 2 >= floorY || shard.vy === 0) && Math.abs(shard.vx) < 12 && Math.abs(shard.vr) < 0.08) {
+          if (shard.groundedAt != null && performance.now() - shard.groundedAt >= settleDelayMs) {
             shard.vx = 0;
             shard.vy = 0;
             shard.vr = 0;
