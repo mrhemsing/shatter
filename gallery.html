@@ -169,12 +169,47 @@
         showHint();
       }
 
+      function wakeUnsupportedSettledShards() {
+        for (const shard of shards) {
+          if (!shard.settled) continue;
+
+          const floorY = canvas.height - 2 * (window.devicePixelRatio || 1);
+          const isOnFloor = shard.y + shard.sh / 2 >= floorY - 1;
+          if (isOnFloor) continue;
+
+          let hasSupport = false;
+          for (const other of shards) {
+            if (other === shard || !other.settled) continue;
+            const overlapsX = Math.abs(shard.x - other.x) < (shard.sw + other.sw) * 0.38;
+            const sittingOnOther = Math.abs((shard.y + shard.sh / 2) - (other.y - other.sh / 2)) < 6 * (window.devicePixelRatio || 1);
+            if (overlapsX && sittingOnOther) {
+              hasSupport = true;
+              break;
+            }
+          }
+
+          if (!hasSupport) {
+            shard.settled = false;
+            shard.groundedAt = null;
+            shard.settledAt = null;
+            shard.vx = 0;
+            shard.vy = 0;
+            shard.vr = 0;
+          }
+        }
+      }
+
       function pruneSettledShards(now) {
+        let removedAny = false;
         for (let i = shards.length - 1; i >= 0; i--) {
           const shard = shards[i];
           if (shard.settled && shard.settledAt != null && now - shard.settledAt >= settledFadeDelayMs) {
             shards.splice(i, 1);
+            removedAny = true;
           }
+        }
+        if (removedAny) {
+          wakeUnsupportedSettledShards();
         }
       }
 
