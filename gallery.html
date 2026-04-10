@@ -38,6 +38,21 @@
         background: rgba(20, 28, 54, 0.9);
       }
 
+      #hint {
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 20;
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: rgba(10, 14, 32, 0.5);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: rgba(255,255,255,0.82);
+        font: 500 14px/1 Inter, system-ui, sans-serif;
+        backdrop-filter: blur(8px);
+        pointer-events: none;
+      }
+
       #bg {
         position: fixed;
         inset: 0;
@@ -59,6 +74,7 @@
     </style>
   </head>
   <body>
+    <div id="hint">Right click to shoot!</div>
     <button id="resetBtn" type="button">Reset</button>
     <img id="bg" src="/gallery-images/upscaled-gallery.webp" alt="Shooting gallery" />
     <canvas id="fx"></canvas>
