@@ -335,6 +335,7 @@
       function normalizeUrl(value) {
         const raw = value.trim();
         if (!raw) return "";
+        if (raw.toLowerCase() === "gallery") return "gallery";
         if (/^https?:\/\//i.test(raw)) return raw;
         return `https://${raw}`;
       }
@@ -381,7 +382,14 @@
           context.fillRect(0, 0, width, height);
           return;
         }
-        context.drawImage(image, 0, 0, width, height);
+        const imageWidth = image.naturalWidth || image.width || width;
+        const imageHeight = image.naturalHeight || image.height || height;
+        const scale = Math.max(width / imageWidth, height / imageHeight);
+        const drawWidth = imageWidth * scale;
+        const drawHeight = imageHeight * scale;
+        const x = (width - drawWidth) / 2;
+        const y = (height - drawHeight) / 2;
+        context.drawImage(image, x, y, drawWidth, drawHeight);
       }
 
       function shootAt(x, y) {
@@ -630,6 +638,13 @@
         setStatus("Demo screenshot loaded.", "This local shot guarantees the shatter effect works.");
       }
 
+      async function loadGalleryShot() {
+        currentUrl = "gallery";
+        resetDamage();
+        await loadImage("/shooting-gallery.jpg");
+        setStatus("Gallery shot loaded.", "The carnival image now fills the entire screen. Shoot anywhere.");
+      }
+
       async function captureUrl(raw) {
         const url = normalizeUrl(raw);
         if (!url) {
@@ -641,6 +656,12 @@
         const wait = waitSelect.value;
         currentUrl = url;
         resetDamage();
+
+        if (url === "gallery") {
+          await loadGalleryShot();
+          return;
+        }
+
         setStatus(`Capturing ${url}...`, `Preset: ${preset}, wait: ${Number(wait) / 1000}s.`);
 
         try {
