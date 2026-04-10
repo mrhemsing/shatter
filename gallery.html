@@ -192,6 +192,7 @@
             shard.vx *= -0.2;
           }
 
+          let restingOnSettledPiece = false;
           for (const other of shards) {
             if (other === shard || !other.settled) continue;
             const overlapsX = Math.abs(shard.x - other.x) < (shard.sw + other.sw) * 0.38;
@@ -199,29 +200,30 @@
             if (overlapsX && touchingTop) {
               const topY = other.y - other.sh / 2;
               shard.y = topY - shard.sh / 2;
-              shard.vy *= -0.08;
-              shard.vx *= 0.92;
-              if (Math.abs(shard.vy) < 30) shard.vy = 0;
+              shard.vx *= 0.75;
+              shard.vy *= -0.05;
+              shard.vr *= 0.7;
+              restingOnSettledPiece = true;
+              if (shard.groundedAt == null) shard.groundedAt = performance.now();
+              break;
             }
           }
 
           const shardBottom = shard.y + shard.sh / 2;
-          if (shardBottom >= floorY) {
+          const onFloor = shardBottom >= floorY;
+          if (onFloor) {
             shard.y = floorY - shard.sh / 2;
             shard.vy *= -0.16;
             shard.vx *= 0.82;
             shard.vr *= 0.8;
             if (shard.groundedAt == null) shard.groundedAt = performance.now();
-            if (Math.abs(shard.vy) < 45) {
-              shard.vy = 0;
-            }
-            if (Math.abs(shard.vx) < 12) {
-              shard.vx = 0;
-            }
-            if (Math.abs(shard.vr) < 0.08) {
-              shard.vr = 0;
-            }
-          } else if (shard.vy !== 0) {
+          }
+
+          if (onFloor || restingOnSettledPiece) {
+            if (Math.abs(shard.vy) < 45) shard.vy = 0;
+            if (Math.abs(shard.vx) < 12) shard.vx = 0;
+            if (Math.abs(shard.vr) < 0.08) shard.vr = 0;
+          } else {
             shard.groundedAt = null;
           }
 
