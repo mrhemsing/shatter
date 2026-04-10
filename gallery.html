@@ -90,7 +90,7 @@
   <body>
     <div id="hint">Click mouse to shoot!</div>
     <button id="resetBtn" type="button">Reset</button>
-    <video id="bg" src="/gallery-images/gallery-4.mp4" autoplay muted loop playsinline></video>
+    <video id="bg" src="/gallery-images/gallery-4-web.mp4" autoplay muted loop playsinline></video>
     <canvas id="fx"></canvas>
 
     <script>
@@ -105,8 +105,8 @@
       const holes = [];
       const shards = [];
       const sparks = [];
-      const maxHoles = 100;
-      const maxShards = 500;
+      const maxHoles = 80;
+      const maxShards = 260;
       const gravity = 1800;
       const settleDelayMs = 1800;
       const settledFadeDelayMs = 10000;
@@ -184,7 +184,7 @@
         holes.push({ x, y, r: radius });
         if (holes.length > maxHoles) holes.shift();
 
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 5; i++) {
           const angle = rand(0, Math.PI * 2);
           const dist = Math.sqrt(Math.random()) * radius;
           const cx = x + Math.cos(angle) * dist;
@@ -214,7 +214,7 @@
           shards.splice(0, shards.length - maxShards);
         }
 
-        for (let i = 0; i < 14; i++) {
+        for (let i = 0; i < 8; i++) {
           const angle = rand(0, Math.PI * 2);
           const speed = rand(240, 820);
           const life = rand(0.15, 0.45);
@@ -397,11 +397,19 @@
         updatePhysics(dt);
         pruneSettledShards(now);
 
+        const hasActiveEffects = shards.some((shard) => !shard.settled) || sparks.length > 0 || hasPointer;
+        const shouldRedrawVideoFrame = img.readyState >= 2 && (hasActiveEffects || Math.floor(now / 100) !== Math.floor((now - dt * 1000) / 100));
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         sourceCtx.clearRect(0, 0, sourceLayer.width, sourceLayer.height);
 
-        drawImageCover(ctx, img, canvas.width, canvas.height);
-        drawImageCover(sourceCtx, img, sourceLayer.width, sourceLayer.height);
+        if (shouldRedrawVideoFrame) {
+          drawImageCover(ctx, img, canvas.width, canvas.height);
+          drawImageCover(sourceCtx, img, sourceLayer.width, sourceLayer.height);
+        } else {
+          drawImageCover(ctx, img, canvas.width, canvas.height);
+          drawImageCover(sourceCtx, img, sourceLayer.width, sourceLayer.height);
+        }
         punchHoleMask(ctx);
         punchHoleMask(sourceCtx);
         drawHoleRims();
