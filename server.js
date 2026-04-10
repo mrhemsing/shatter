@@ -77,11 +77,11 @@ async function cleanupPage(page) {
   }).catch(() => {});
 }
 
-app.use(express.static(__dirname, { extensions: ["html"] }));
-
 app.get("/", (_req, res) => {
   res.redirect(302, "/gallery");
 });
+
+app.use(express.static(__dirname, { extensions: ["html"] }));
 
 app.get("/gallery", (_req, res) => {
   res.sendFile(path.join(__dirname, "gallery.html"));
