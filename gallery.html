@@ -390,6 +390,35 @@
         ctx.stroke();
       }
 
+      function drawCrosshairOverlay() {
+        if (!hasPointer) return;
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const x = pointerX / dpr;
+        const y = pointerY / dpr;
+        const r = 16;
+        const tick = 7;
+
+        ctx.save();
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.strokeStyle = "rgba(255, 77, 103, 0.98)";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y - r - tick);
+        ctx.lineTo(x, y - r + tick);
+        ctx.moveTo(x, y + r - tick);
+        ctx.lineTo(x, y + r + tick);
+        ctx.moveTo(x - r - tick, y);
+        ctx.lineTo(x - r + tick, y);
+        ctx.moveTo(x + r - tick, y);
+        ctx.lineTo(x + r + tick, y);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       function render() {
         const now = performance.now();
         const dt = Math.min((now - lastTime) / 1000, 0.05);
@@ -415,7 +444,7 @@
         drawHoleRims();
         drawShards();
         drawSparks();
-        drawCrosshair();
+        drawCrosshairOverlay();
         requestAnimationFrame(render);
       }
 
