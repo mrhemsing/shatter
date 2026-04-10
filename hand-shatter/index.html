@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hand Shatter</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #050816;
+        --panel: rgba(10, 14, 32, 0.86);
+        --panel-border: rgba(255, 255, 255, 0.12);
+        --text: #f4f7ff;
+        --muted: #a5b0d6;
+        --accent: #7c5cff;
+        --accent-2: #21d4fd;
+        --danger: #ff4d67;
+        --warn: #fcc41c;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        min-height: 100%;
+        background:
+          radial-gradient(circle at top, rgba(124, 92, 255, 0.22), transparent 32%),
+          linear-gradient(180deg, #081020 0%, #03050c 100%);
+        color: var(--text);
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .shell {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+        background: linear-gradient(180deg, rgba(5, 8, 22, 0.95), rgba(5, 8, 22, 0.78));
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .title-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.2rem, 1rem + 1vw, 2rem);
+      }
+
+      .subtitle, .status {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: minmax(240px, 1fr) auto auto;
+        gap: 10px;
+      }
+
+      .field, .button {
+        min-height: 48px;
+        border-radius: 14px;
+        border: 1px solid var(--panel-border);
+        background: var(--panel);
+        color: var(--text);
+        font: inherit;
+      }
+
+      .field { width: 100%; padding: 0 14px; }
+      .button { padding: 0 16px; cursor: pointer; }
+      .button.primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        border: none;
+        font-weight: 700;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #27d980;
+        box-shadow: 0 0 0 4px rgba(39, 217, 128, 0.16);
+      }
+
+      .stage {
+        position: relative;
+        min-height: 0;
+        padding: 14px;
+      }
+
+      #frameWrap {
+        position: relative;
+        width: 100%;
+        height: calc(100vh - 170px);
+        min-height: 420px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 18px;
+        overflow: hidden;
+        background: #0a0f1f;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      }
+
+      #webcam {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: scaleX(-1);
+        background: #0a0f1f;
+      }
+
+      #snapshot {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        pointer-events: none;
+      }
+
+      canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        cursor: crosshair;
+      }
+
+      .overlay-note {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        z-index: 5;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.52);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 0.88rem;
+        max-width: 360px;
+      }
+
+      @media (max-width: 880px) {
+        .controls { grid-template-columns: 1fr; }
+        #frameWrap { height: calc(100vh - 250px); }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="shell">
+      <div class="title-row">
+        <div>
+          <h1>Hand Shatter</h1>
+          <div class="subtitle">Separate from the screenshot app. Use your webcam, then pinch to freeze and shatter the frame.</div>
+        </div>
+        <div class="badge"><span class="dot"></span><span>Pinch thumb + index to capture, right click or Shift + click to shoot</span></div>
+      </div>
+
+      <div class="controls">
+        <div id="statusText" class="field" style="display:flex;align-items:center;">Waiting for camera…</div>
+        <button id="captureBtn" class="button primary" type="button">Capture Current Frame</button>
+        <button id="resetBtn" class="button" type="button">Reset Damage</button>
+      </div>
+
+      <div class="status" id="detailText">If hand tracking is available, pinching thumb + index will also trigger a capture.</div>
+    </header>
+
+    <main class="stage">
+      <div id="frameWrap">
+        <video id="webcam" autoplay muted playsinline></video>
+        <img id="snapshot" alt="Captured webcam frame" hidden />
+        <canvas id="fxCanvas"></canvas>
+        <div class="overlay-note">This version avoids the HTML-in-canvas path. It uses a normal webcam feed plus a captured bitmap for shattering.</div>
+      </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script>
+      const webcam = document.getElementById("webcam");
+      const snapshotImg = document.getElementById("snapshot");
+      const canvas = document.getElementById("fxCanvas");
+      const ctx = canvas.getContext("2d");
+      const sourceLayer = document.createElement("canvas");
+      const sourceCtx = sourceLayer.getContext("2d");
+      const statusText = document.getElementById("statusText");
+      const detailText = document.getElementById("detailText");
+      const captureBtn = document.getElementById("captureBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const frameWrap = document.getElementById("frameWrap");
+
+      const holes = [];
+      const shards = [];
+      const sparks = [];
+      const maxHoles = 90;
+      const maxShards = 500;
+      const gravity = 1700;
+
+      let pointerX = 0;
+      let pointerY = 0;
+      let hasPointer = false;
+      let lastTime = performance.now();
+      let snapshotImage = null;
+      let handLandmarks = null;
+      let prevPinched = false;
+      let lastCaptureAt = 0;
+
+      function setStatus(text, detail) {
+        statusText.textContent = text;
+        if (detail) detailText.textContent = detail;
+      }
+
+      function rand(min, max) {
+        return min + Math.random() * (max - min);
+      }
+
+      function resizeCanvas() {
+        const rect = frameWrap.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const width = Math.max(1, Math.round(rect.width * dpr));
+        const height = Math.max(1, Math.round(rect.height * dpr));
+        if (canvas.width === width && canvas.height === height) return;
+        canvas.width = width;
+        canvas.height = height;
+        sourceLayer.width = width;
+        sourceLayer.height = height;
+        pointerX = width / 2;
+        pointerY = height / 2;
+      }
+
+      function pointFromEvent(event) {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        return {
+          x: (event.clientX - rect.left) * dpr,
+          y: (event.clientY - rect.top) * dpr,
+        };
+      }
+
+      function resetDamage() {
+        holes.length = 0;
+        shards.length = 0;
+        sparks.length = 0;
+      }
+
+      function drawImageCover(context, image, width, height) {
+        if (!image) return;
+        const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+        const drawWidth = image.naturalWidth * scale;
+        const drawHeight = image.naturalHeight * scale;
+        const x = (width - drawWidth) / 2;
+        const y = (height - drawHeight) / 2;
+        context.drawImage(image, x, y, drawWidth, drawHeight);
+      }
+
+      async function captureFrame() {
+        if (webcam.readyState < 2 || !webcam.videoWidth) {
+          setStatus("Camera not ready yet.", "Give it a second and try again.");
+          return;
+        }
+        const temp = document.createElement("canvas");
+        temp.width = webcam.videoWidth;
+        temp.height = webcam.videoHeight;
+        const tempCtx = temp.getContext("2d");
+        tempCtx.translate(temp.width, 0);
+        tempCtx.scale(-1, 1);
+        tempCtx.drawImage(webcam, 0, 0, temp.width, temp.height);
+        const dataUrl = temp.toDataURL("image/png");
+        const img = new Image();
+        img.src = dataUrl;
+        await img.decode();
+        snapshotImage = img;
+        snapshotImg.src = dataUrl;
+        snapshotImg.hidden = false;
+        resetDamage();
+        setStatus("Frame captured.", "Now shoot the frozen webcam image, or pinch again to refresh it.");
+      }
+
+      function shootAt(x, y) {
+        if (!snapshotImage) return;
+        const dpr = window.devicePixelRatio || 1;
+        const radius = rand(20, 36) * dpr;
+        holes.push({ x, y, r: radius });
+        if (holes.length > maxHoles) holes.shift();
+
+        for (let i = 0; i < 8; i++) {
+          const angle = rand(0, Math.PI * 2);
+          const dist = Math.sqrt(Math.random()) * radius;
+          const cx = x + Math.cos(angle) * dist;
+          const cy = y + Math.sin(angle) * dist;
+          const w = rand(24, 72) * dpr;
+          const h = rand(24, 72) * dpr;
+          const sx = Math.max(0, Math.min(sourceLayer.width - w, cx - w * 0.5));
+          const sy = Math.max(0, Math.min(sourceLayer.height - h, cy - h * 0.5));
+          const dx = cx - x;
+          const dy = cy - y;
+          const len = Math.hypot(dx, dy) || 1;
+          shards.push({
+            sx, sy, sw: w, sh: h,
+            x: sx + w * 0.5,
+            y: sy + h * 0.5,
+            vx: (dx / len) * rand(220, 720) + rand(-60, 60),
+            vy: (dy / len) * rand(180, 620) - rand(280, 680),
+            rot: rand(-0.3, 0.3),
+            vr: rand(-5.5, 5.5),
+            settled: false,
+          });
+        }
+        if (shards.length > maxShards) shards.splice(0, shards.length - maxShards);
+
+        for (let i = 0; i < 12; i++) {
+          const angle = rand(0, Math.PI * 2);
+          const speed = rand(220, 740);
+          const life = rand(0.2, 0.45);
+          sparks.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life,
+            maxLife: life,
+          });
+        }
+      }
+
+      function updatePhysics(dt) {
+        const floorY = canvas.height + 100;
+        for (const shard of shards) {
+          if (shard.settled) continue;
+          shard.vy += gravity * dt;
+          shard.x += shard.vx * dt;
+          shard.y += shard.vy * dt;
+          shard.rot += shard.vr * dt;
+          if (shard.y - shard.sh > floorY || shard.x + shard.sw < -200 || shard.x - shard.sw > canvas.width + 200) {
+            shard.settled = true;
+          }
+        }
+
+        for (let i = sparks.length - 1; i >= 0; i--) {
+          const spark = sparks[i];
+          spark.life -= dt;
+          if (spark.life <= 0) {
+            sparks.splice(i, 1);
+            continue;
+          }
+          spark.vy += gravity * 0.45 * dt;
+          spark.x += spark.vx * dt;
+          spark.y += spark.vy * dt;
+        }
+      }
+
+      function drawHoleWarps() {
+        const ringCount = 8;
+        for (const hole of holes) {
+          const warpOuter = hole.r * 2.8;
+          for (let i = 0; i < ringCount; i++) {
+            const outerFrac = i / ringCount;
+            const innerFrac = (i + 1) / ringCount;
+            const ringOuter = warpOuter - outerFrac * (warpOuter - hole.r);
+            const ringInner = warpOuter - innerFrac * (warpOuter - hole.r);
+            const pull = innerFrac * innerFrac * 0.22;
+            const scale = 1 - pull;
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(hole.x, hole.y, ringOuter, 0, Math.PI * 2);
+            ctx.arc(hole.x, hole.y, ringInner, 0, Math.PI * 2, true);
+            ctx.clip();
+            ctx.translate(hole.x, hole.y);
+            ctx.scale(scale, scale);
+            ctx.translate(-hole.x, -hole.y);
+            ctx.drawImage(sourceLayer, 0, 0);
+            ctx.restore();
+          }
+        }
+      }
+
+      function drawHoles() {
+        ctx.save();
+        ctx.fillStyle = "#000";
+        ctx.globalCompositeOperation = "destination-out";
+        for (const hole of holes) {
+          const jag = hole.r * 0.22;
+          ctx.beginPath();
+          for (let i = 0; i < 20; i++) {
+            const a = (i / 20) * Math.PI * 2;
+            const rr = hole.r + Math.sin(a * 6 + hole.x * 0.003) * jag + Math.cos(a * 3.7 + hole.y * 0.004) * jag * 0.6;
+            const px = hole.x + Math.cos(a) * rr;
+            const py = hole.y + Math.sin(a) * rr;
+            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function drawShards() {
+        for (const shard of shards) {
+          if (shard.settled) continue;
+          ctx.save();
+          ctx.translate(shard.x, shard.y);
+          ctx.rotate(shard.rot);
+          ctx.drawImage(sourceLayer, shard.sx, shard.sy, shard.sw, shard.sh, -shard.sw / 2, -shard.sh / 2, shard.sw, shard.sh);
+          ctx.strokeStyle = "rgba(255,255,255,0.22)";
+          ctx.lineWidth = 1.5 * (window.devicePixelRatio || 1);
+          ctx.strokeRect(-shard.sw / 2, -shard.sh / 2, shard.sw, shard.sh);
+          ctx.restore();
+        }
+      }
+
+      function drawSparks() {
+        for (const spark of sparks) {
+          const t = spark.life / spark.maxLife;
+          ctx.fillStyle = `rgba(252, ${Math.round(152 + t * 100)}, ${Math.round(56 * (1 - t))}, ${0.25 + t * 0.75})`;
+          ctx.beginPath();
+          ctx.arc(spark.x, spark.y, (2 + t * 2.5) * (window.devicePixelRatio || 1), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function drawCrosshair() {
+        if (!hasPointer) return;
+        const dpr = window.devicePixelRatio || 1;
+        const r = 18 * dpr;
+        const tick = 7 * dpr;
+        ctx.strokeStyle = "#ff4d67";
+        ctx.lineWidth = 2.5 * dpr;
+        ctx.beginPath();
+        ctx.arc(pointerX, pointerY, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pointerX, pointerY - r - tick);
+        ctx.lineTo(pointerX, pointerY - r + tick);
+        ctx.moveTo(pointerX, pointerY + r - tick);
+        ctx.lineTo(pointerX, pointerY + r + tick);
+        ctx.moveTo(pointerX - r - tick, pointerY);
+        ctx.lineTo(pointerX - r + tick, pointerY);
+        ctx.moveTo(pointerX + r - tick, pointerY);
+        ctx.lineTo(pointerX + r + tick, pointerY);
+        ctx.stroke();
+      }
+
+      function render() {
+        const now = performance.now();
+        const dt = Math.min((now - lastTime) / 1000, 0.05);
+        lastTime = now;
+        updatePhysics(dt);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        sourceCtx.clearRect(0, 0, sourceLayer.width, sourceLayer.height);
+        if (snapshotImage) {
+          drawImageCover(sourceCtx, snapshotImage, sourceLayer.width, sourceLayer.height);
+          drawHoleWarps();
+          drawHoles();
+          drawShards();
+          drawSparks();
+        }
+        drawCrosshair();
+        requestAnimationFrame(render);
+      }
+
+      async function initHandTracking() {
+        if (typeof Hands !== "function") {
+          setStatus("Camera ready.", "Hand tracking library did not load. You can still click Capture and shoot with the mouse.");
+          return;
+        }
+
+        const hands = new Hands({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+        });
+
+        hands.setOptions({
+          maxNumHands: 1,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.7,
+          minTrackingConfidence: 0.5,
+        });
+
+        hands.onResults((results) => {
+          handLandmarks = results.multiHandLandmarks?.[0] ?? null;
+          if (!handLandmarks) {
+            hasPointer = false;
+            prevPinched = false;
+            return;
+          }
+
+          const tip = handLandmarks[8];
+          const thumbTip = handLandmarks[4];
+          const rawX = (1 - tip.x) * canvas.width;
+          const rawY = tip.y * canvas.height;
+          pointerX = rawX;
+          pointerY = rawY;
+          hasPointer = true;
+
+          const pinchDistance = Math.hypot(thumbTip.x - tip.x, thumbTip.y - tip.y);
+          const pinched = pinchDistance < 0.055;
+          if (pinched && !prevPinched && performance.now() - lastCaptureAt > 1200) {
+            lastCaptureAt = performance.now();
+            captureFrame();
+          }
+          prevPinched = pinched;
+        });
+
+        let busy = false;
+        async function processFrame() {
+          if (!busy && webcam.readyState >= 2) {
+            busy = true;
+            try {
+              await hands.send({ image: webcam });
+            } catch {}
+            finally { busy = false; }
+          }
+          requestAnimationFrame(processFrame);
+        }
+        processFrame();
+      }
+
+      async function initCamera() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false,
+          });
+          webcam.srcObject = stream;
+          await webcam.play();
+          setStatus("Camera ready.", "Pinch thumb + index to capture a frame, then right click or Shift + click to shoot it.");
+          initHandTracking();
+        } catch (error) {
+          setStatus("Camera unavailable.", error?.message || String(error));
+        }
+      }
+
+      captureBtn.addEventListener("click", () => captureFrame());
+      resetBtn.addEventListener("click", () => {
+        resetDamage();
+        setStatus(snapshotImage ? "Damage reset." : "No captured frame yet.", snapshotImage ? "You can keep shooting the current frame or capture a new one." : "Capture a frame first.");
+      });
+
+      canvas.addEventListener("pointermove", (event) => {
+        if (handLandmarks) return;
+        const p = pointFromEvent(event);
+        pointerX = p.x;
+        pointerY = p.y;
+        hasPointer = true;
+      });
+      canvas.addEventListener("pointerleave", () => {
+        if (!handLandmarks) hasPointer = false;
+      });
+      canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+      canvas.addEventListener("pointerdown", (event) => {
+        const wantsShoot = event.button === 2 || (event.button === 0 && event.shiftKey);
+        if (!wantsShoot || !snapshotImage) return;
+        event.preventDefault();
+        const p = pointFromEvent(event);
+        shootAt(p.x, p.y);
+      });
+
+      new ResizeObserver(() => resizeCanvas()).observe(frameWrap);
+      resizeCanvas();
+      initCamera();
+      render();
+    </script>
+  </body>
+</html>
