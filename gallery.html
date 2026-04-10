@@ -89,11 +89,7 @@
       }
 
       #rotateDuck {
-        order: 2;
-        width: min(28vw, 140px);
-        max-width: 140px;
-        opacity: 1;
-        pointer-events: none;
+        display: none;
       }
 
       @media (orientation: portrait) and (max-width: 900px) {
@@ -132,7 +128,7 @@
     </style>
   </head>
   <body>
-    <div id="rotatePrompt"><div id="rotatePromptText">Rotate your screen to start</div><img id="rotateDuck" src="/gallery-images/1duck.jpg" alt="Duck" /></div>
+    <div id="rotatePrompt"><div id="rotatePromptText">Rotate your screen to start</div></div>
     <div id="hint">Click mouse to shoot!</div>
     <button id="resetBtn" type="button">Reset</button>
     <video id="bg" src="/gallery-images/gallery-4.mp4" autoplay muted loop playsinline></video>
@@ -194,7 +190,7 @@
 
       function syncMediaSource() {
         const wantsPortrait = isMobilePortraitMode();
-        const nextSrc = wantsPortrait ? "/gallery-images/blank-black.png" : "/gallery-images/upscaled-2.jpeg";
+        const nextSrc = wantsPortrait ? "/gallery-images/phone-portrait.mp4" : "/gallery-images/upscaled-2.jpeg";
         const isVideo = nextSrc.endsWith(".mp4");
         if (img.dataset.src === nextSrc) return;
 
