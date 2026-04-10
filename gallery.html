@@ -547,25 +547,21 @@
         updatePhysics(dt);
         pruneSettledShards(now);
 
-        const hasActiveEffects = shards.some((shard) => !shard.settled) || sparks.length > 0 || hasPointer;
-        const shouldRedrawVideoFrame = img.readyState >= 2 && (hasActiveEffects || Math.floor(now / 100) !== Math.floor((now - dt * 1000) / 100));
-
+        const isPortraitRotateScreen = isMobilePortraitMode();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         sourceCtx.clearRect(0, 0, sourceLayer.width, sourceLayer.height);
 
-        if (shouldRedrawVideoFrame) {
+        if (!isPortraitRotateScreen) {
           drawImageCover(ctx, img, canvas.width, canvas.height);
           drawImageCover(sourceCtx, img, sourceLayer.width, sourceLayer.height);
-        } else {
-          drawImageCover(ctx, img, canvas.width, canvas.height);
-          drawImageCover(sourceCtx, img, sourceLayer.width, sourceLayer.height);
+          punchHoleMask(ctx);
+          punchHoleMask(sourceCtx);
+          drawHoleRims();
+          drawShards();
+          drawSparks();
+          drawCrosshairOverlay();
         }
-        punchHoleMask(ctx);
-        punchHoleMask(sourceCtx);
-        drawHoleRims();
-        drawShards();
-        drawSparks();
-        drawCrosshairOverlay();
+
         requestAnimationFrame(render);
       }
 
