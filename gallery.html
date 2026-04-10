@@ -224,49 +224,46 @@
         }
       }
 
-      function drawHoleWarps() {
-        for (const hole of holes) {
-          const warpOuter = hole.r * 2.8;
-          const ringCount = 8;
-          for (let i = 0; i < ringCount; i++) {
-            const outerFrac = i / ringCount;
-            const innerFrac = (i + 1) / ringCount;
-            const ringOuter = warpOuter - outerFrac * (warpOuter - hole.r);
-            const ringInner = warpOuter - innerFrac * (warpOuter - hole.r);
-            const pull = innerFrac * innerFrac * 0.22;
-            const scale = 1 - pull;
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(hole.x, hole.y, ringOuter, 0, Math.PI * 2);
-            ctx.arc(hole.x, hole.y, ringInner, 0, Math.PI * 2, true);
-            ctx.clip();
-            ctx.translate(hole.x, hole.y);
-            ctx.scale(scale, scale);
-            ctx.translate(-hole.x, -hole.y);
-            ctx.drawImage(sourceLayer, 0, 0);
-            ctx.restore();
-          }
+      function holePath(hole, scale = 1) {
+        const jag = hole.r * 0.22 * scale;
+        ctx.beginPath();
+        for (let i = 0; i < 20; i++) {
+          const a = (i / 20) * Math.PI * 2;
+          const rr = (hole.r * scale) + Math.sin(a * 6 + hole.x * 0.003) * jag + Math.cos(a * 3.7 + hole.y * 0.004) * jag * 0.6;
+          const px = hole.x + Math.cos(a) * rr;
+          const py = hole.y + Math.sin(a) * rr;
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
         }
+        ctx.closePath();
       }
 
-      function drawHoles() {
-        ctx.save();
-        ctx.fillStyle = "#000";
-        ctx.globalCompositeOperation = "destination-out";
+      function punchHoleMask(context) {
+        context.save();
+        context.globalCompositeOperation = "destination-out";
+        context.fillStyle = "#000";
         for (const hole of holes) {
-          const jag = hole.r * 0.22;
-          ctx.beginPath();
-          for (let i = 0; i < 20; i++) {
-            const a = (i / 20) * Math.PI * 2;
-            const rr = hole.r + Math.sin(a * 6 + hole.x * 0.003) * jag + Math.cos(a * 3.7 + hole.y * 0.004) * jag * 0.6;
-            const px = hole.x + Math.cos(a) * rr;
-            const py = hole.y + Math.sin(a) * rr;
-            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-          }
-          ctx.closePath();
-          ctx.fill();
+          holePath(hole, 1);
+          context.fill();
         }
-        ctx.restore();
+        context.restore();
+      }
+
+      function drawHoleRims() {
+        for (const hole of holes) {
+          const shadow = ctx.createRadialGradient(hole.x, hole.y, hole.r * 0.2, hole.x, hole.y, hole.r * 2.2);
+          shadow.addColorStop(0, "rgba(0,0,0,0.65)");
+          shadow.addColorStop(0.45, "rgba(0,0,0,0.2)");
+          shadow.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = shadow;
+          ctx.beginPath();
+          ctx.arc(hole.x, hole.y, hole.r * 2.2, 0, Math.PI * 2);
+          ctx.fill();
+
+          holePath(hole, 1.04);
+          ctx.strokeStyle = "rgba(255,255,255,0.18)";
+          ctx.lineWidth = 2 * (window.devicePixelRatio || 1);
+          ctx.stroke();
+        }
       }
 
       function drawShards() {
@@ -320,12 +317,15 @@
         const dt = Math.min((now - lastTime) / 1000, 0.05);
         lastTime = now;
         updatePhysics(dt);
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         sourceCtx.clearRect(0, 0, sourceLayer.width, sourceLayer.height);
+
         drawImageCover(ctx, img, canvas.width, canvas.height);
         drawImageCover(sourceCtx, img, sourceLayer.width, sourceLayer.height);
-        drawHoleWarps();
-        drawHoles();
+        punchHoleMask(ctx);
+        punchHoleMask(sourceCtx);
+        drawHoleRims();
         drawShards();
         drawSparks();
         drawCrosshair();
