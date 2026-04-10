@@ -75,16 +75,31 @@
         align-items: center;
         justify-content: center;
         text-align: center;
-        gap: 28px;
+        gap: 20px;
         padding: 24px;
-        background: rgba(0, 0, 0, 0.22);
+        background: rgba(0, 0, 0, 0.12);
         color: white;
         font: 600 22px/1.4 Inter, system-ui, sans-serif;
-        backdrop-filter: blur(2px);
+        backdrop-filter: blur(1px);
       }
 
       #rotatePromptText {
+        order: 1;
         text-shadow: 0 3px 14px rgba(0,0,0,0.7);
+      }
+
+      #rotateDuck {
+        order: 2;
+        width: min(28vw, 140px);
+        max-width: 140px;
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      @media (orientation: portrait) and (max-width: 900px) {
+        #resetBtn {
+          display: none;
+        }
       }
 
       #rotatePrompt.show {
@@ -113,7 +128,7 @@
     </style>
   </head>
   <body>
-    <div id="rotatePrompt"><div id="rotatePromptText">Rotate your screen to start</div></div>
+    <div id="rotatePrompt"><div id="rotatePromptText">Rotate your screen to start</div><img id="rotateDuck" src="/gallery-images/1duck.jpg" alt="Duck" /></div>
     <div id="hint">Click mouse to shoot!</div>
     <button id="resetBtn" type="button">Reset</button>
     <video id="bg" src="/gallery-images/gallery-4.mp4" autoplay muted loop playsinline></video>
