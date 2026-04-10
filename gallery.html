@@ -100,6 +100,10 @@
         #resetBtn {
           display: none;
         }
+
+        #hint {
+          display: none;
+        }
       }
 
       #rotatePrompt.show {
@@ -190,7 +194,7 @@
 
       function syncMediaSource() {
         const wantsPortrait = isMobilePortraitMode();
-        const nextSrc = wantsPortrait ? "/gallery-images/phone-portrait.mp4" : "/gallery-images/upscaled-2.jpeg";
+        const nextSrc = wantsPortrait ? "/gallery-images/two-ducks.png" : "/gallery-images/upscaled-2.jpeg";
         const isVideo = nextSrc.endsWith(".mp4");
         if (img.dataset.src === nextSrc) return;
 
