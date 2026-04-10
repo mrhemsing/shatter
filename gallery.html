@@ -290,7 +290,6 @@
 
       function drawShards() {
         for (const shard of shards) {
-          if (shard.settled) continue;
           ctx.save();
           ctx.translate(shard.x, shard.y);
           ctx.rotate(shard.rot);
