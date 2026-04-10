@@ -40,17 +40,23 @@
 
       #hint {
         position: fixed;
-        top: 16px;
-        left: 16px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
         z-index: 20;
-        padding: 10px 14px;
+        padding: 14px 20px;
         border-radius: 999px;
-        background: rgba(10, 14, 32, 0.5);
+        background: rgba(10, 14, 32, 0.58);
         border: 1px solid rgba(255,255,255,0.12);
-        color: rgba(255,255,255,0.82);
-        font: 500 14px/1 Inter, system-ui, sans-serif;
+        color: rgba(255,255,255,0.88);
+        font: 600 18px/1 Inter, system-ui, sans-serif;
         backdrop-filter: blur(8px);
         pointer-events: none;
+        transition: opacity 220ms ease;
+      }
+
+      #hint.hidden {
+        opacity: 0;
       }
 
       #bg {
@@ -86,6 +92,7 @@
       const sourceLayer = document.createElement("canvas");
       const sourceCtx = sourceLayer.getContext("2d");
       const resetBtn = document.getElementById("resetBtn");
+      const hint = document.getElementById("hint");
 
       const holes = [];
       const shards = [];
@@ -99,6 +106,7 @@
       let pointerY = 0;
       let hasPointer = false;
       let lastTime = performance.now();
+      let hintTimeout = null;
 
       function rand(min, max) {
         return min + Math.random() * (max - min);
@@ -136,10 +144,20 @@
         context.drawImage(image, x, y, drawWidth, drawHeight);
       }
 
+      function showHint() {
+        if (!hint) return;
+        hint.classList.remove("hidden");
+        if (hintTimeout) clearTimeout(hintTimeout);
+        hintTimeout = setTimeout(() => {
+          hint.classList.add("hidden");
+        }, 2000);
+      }
+
       function resetGame() {
         holes.length = 0;
         shards.length = 0;
         sparks.length = 0;
+        showHint();
       }
 
       function pruneSettledShards(now) {
@@ -413,6 +431,8 @@
         resizeCanvas();
         render();
       }
+
+      showHint();
     </script>
   </body>
 </html>
