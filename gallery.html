@@ -131,7 +131,7 @@
         width: 100%;
         position: relative;
         z-index: 2;
-        margin-top: -100px;
+        margin-top: -125px;
         text-shadow: 0 3px 14px rgba(0,0,0,0.7);
       }
 
@@ -278,6 +278,10 @@
         return window.innerWidth <= 900 && window.innerHeight > window.innerWidth;
       }
 
+      function isMobileMode() {
+        return window.innerWidth <= 900;
+      }
+
       function syncMediaSource() {
         const wantsPortrait = isMobilePortraitMode();
         const nextSrc = "/gallery-images/upscaled-2.jpeg";
@@ -380,7 +384,7 @@
 
       function pruneSettledShards(now) {
         let removedAny = false;
-        const fadeDelay = isMobilePortraitMode() ? mobileSettledFadeDelayMs : settledFadeDelayMs;
+        const fadeDelay = isMobileMode() ? mobileSettledFadeDelayMs : settledFadeDelayMs;
         for (let i = shards.length - 1; i >= 0; i--) {
           const shard = shards[i];
           if (shard.settled && shard.settledAt != null && now - shard.settledAt >= fadeDelay) {
