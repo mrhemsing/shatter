@@ -137,6 +137,7 @@
       const gravity = 1800;
       const settleDelayMs = 1800;
       const settledFadeDelayMs = 10000;
+      const mobileSettledFadeDelayMs = 1000;
       let pointerX = 0;
       let pointerY = 0;
       let hasPointer = false;
@@ -268,9 +269,10 @@
 
       function pruneSettledShards(now) {
         let removedAny = false;
+        const fadeDelay = isMobilePortraitMode() ? mobileSettledFadeDelayMs : settledFadeDelayMs;
         for (let i = shards.length - 1; i >= 0; i--) {
           const shard = shards[i];
-          if (shard.settled && shard.settledAt != null && now - shard.settledAt >= settledFadeDelayMs) {
+          if (shard.settled && shard.settledAt != null && now - shard.settledAt >= fadeDelay) {
             shards.splice(i, 1);
             removedAny = true;
           }
