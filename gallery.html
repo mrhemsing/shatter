@@ -18,6 +18,26 @@
         cursor: crosshair;
       }
 
+      #resetBtn {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 20;
+        min-height: 44px;
+        padding: 0 16px;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 999px;
+        background: rgba(10, 14, 32, 0.72);
+        color: #fff;
+        font: 600 14px/1 Inter, system-ui, sans-serif;
+        cursor: pointer;
+        backdrop-filter: blur(10px);
+      }
+
+      #resetBtn:hover {
+        background: rgba(20, 28, 54, 0.9);
+      }
+
       #bg {
         position: fixed;
         inset: 0;
@@ -39,6 +59,7 @@
     </style>
   </head>
   <body>
+    <button id="resetBtn" type="button">Reset</button>
     <img id="bg" src="/gallery-images/upscaled-gallery.webp" alt="Shooting gallery" />
     <canvas id="fx"></canvas>
 
@@ -48,6 +69,7 @@
       const ctx = canvas.getContext("2d");
       const sourceLayer = document.createElement("canvas");
       const sourceCtx = sourceLayer.getContext("2d");
+      const resetBtn = document.getElementById("resetBtn");
 
       const holes = [];
       const shards = [];
@@ -94,6 +116,12 @@
         const x = (width - drawWidth) / 2;
         const y = (height - drawHeight) / 2;
         context.drawImage(image, x, y, drawWidth, drawHeight);
+      }
+
+      function resetGame() {
+        holes.length = 0;
+        shards.length = 0;
+        sparks.length = 0;
       }
 
       function shootAt(x, y) {
@@ -145,15 +173,41 @@
       }
 
       function updatePhysics(dt) {
-        const floorY = canvas.height + 100;
+        const floorY = canvas.height - 8 * (window.devicePixelRatio || 1);
         for (const shard of shards) {
           if (shard.settled) continue;
           shard.vy += gravity * dt;
           shard.x += shard.vx * dt;
           shard.y += shard.vy * dt;
           shard.rot += shard.vr * dt;
-          if (shard.y - shard.sh > floorY || shard.x + shard.sw < -200 || shard.x - shard.sw > canvas.width + 200) {
-            shard.settled = true;
+
+          if (shard.x - shard.sw / 2 < 0) {
+            shard.x = shard.sw / 2;
+            shard.vx *= -0.2;
+          }
+          if (shard.x + shard.sw / 2 > canvas.width) {
+            shard.x = canvas.width - shard.sw / 2;
+            shard.vx *= -0.2;
+          }
+
+          const shardBottom = shard.y + shard.sh / 2;
+          if (shardBottom >= floorY) {
+            shard.y = floorY - shard.sh / 2;
+            shard.vy *= -0.16;
+            shard.vx *= 0.82;
+            shard.vr *= 0.8;
+            if (Math.abs(shard.vy) < 45) {
+              shard.vy = 0;
+            }
+            if (Math.abs(shard.vx) < 12) {
+              shard.vx = 0;
+            }
+            if (Math.abs(shard.vr) < 0.08) {
+              shard.vr = 0;
+            }
+            if (shard.vy === 0 && shard.vx === 0 && shard.vr === 0) {
+              shard.settled = true;
+            }
           }
         }
 
@@ -279,6 +333,7 @@
       }
 
       window.addEventListener("resize", resizeCanvas);
+      resetBtn.addEventListener("click", resetGame);
       canvas.addEventListener("pointermove", (event) => {
         const p = pointFromEvent(event);
         pointerX = p.x;
