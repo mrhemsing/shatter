@@ -78,6 +78,7 @@
       const maxShards = 500;
       const gravity = 1800;
       const settleDelayMs = 1800;
+      const settledFadeDelayMs = 10000;
       let pointerX = 0;
       let pointerY = 0;
       let hasPointer = false;
@@ -125,6 +126,15 @@
         sparks.length = 0;
       }
 
+      function pruneSettledShards(now) {
+        for (let i = shards.length - 1; i >= 0; i--) {
+          const shard = shards[i];
+          if (shard.settled && shard.settledAt != null && now - shard.settledAt >= settledFadeDelayMs) {
+            shards.splice(i, 1);
+          }
+        }
+      }
+
       function shootAt(x, y) {
         const dpr = window.devicePixelRatio || 1;
         const radius = rand(20, 38) * dpr;
@@ -153,6 +163,7 @@
             vr: rand(-6, 6),
             settled: false,
             groundedAt: null,
+            settledAt: null,
           });
         }
 
@@ -232,6 +243,7 @@
             shard.vy = 0;
             shard.vr = 0;
             shard.settled = true;
+            if (shard.settledAt == null) shard.settledAt = performance.now();
           }
         }
 
@@ -340,6 +352,7 @@
         const dt = Math.min((now - lastTime) / 1000, 0.05);
         lastTime = now;
         updatePhysics(dt);
+        pruneSettledShards(now);
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         sourceCtx.clearRect(0, 0, sourceLayer.width, sourceLayer.height);
