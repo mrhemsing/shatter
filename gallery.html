@@ -349,10 +349,17 @@
         }, 2000);
       }
 
+      function rebuildDamageLayer() {
+        damageCtx.clearRect(0, 0, damageLayer.width, damageLayer.height);
+        drawImageCover(damageCtx, img, damageLayer.width, damageLayer.height);
+        punchHoleMask(damageCtx);
+      }
+
       function resetGame() {
         holes.length = 0;
         shards.length = 0;
         sparks.length = 0;
+        rebuildDamageLayer();
         showHint();
       }
 
@@ -435,6 +442,7 @@
         }
         holes.push({ x, y, r: radius });
         if (holes.length > maxHoles) holes.shift();
+        rebuildDamageLayer();
 
         for (let i = 0; i < 5; i++) {
           const angle = rand(0, Math.PI * 2);
@@ -685,15 +693,14 @@
         const isPortraitRotateScreen = isMobilePortraitMode();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         sourceCtx.clearRect(0, 0, sourceLayer.width, sourceLayer.height);
-        damageCtx.clearRect(0, 0, damageLayer.width, damageLayer.height);
 
         if (!isPortraitRotateScreen) {
           drawImageCover(ctx, img, canvas.width, canvas.height);
           drawImageCover(sourceCtx, img, sourceLayer.width, sourceLayer.height);
-          drawImageCover(damageCtx, img, damageLayer.width, damageLayer.height);
+          rebuildDamageLayer();
           punchHoleMask(ctx);
-          punchHoleMask(sourceCtx);
-          punchHoleMask(damageCtx);
+          sourceCtx.clearRect(0, 0, sourceLayer.width, sourceLayer.height);
+          sourceCtx.drawImage(damageLayer, 0, 0);
           drawHoleRims();
           drawShards();
           drawSparks();
@@ -726,6 +733,7 @@
       let started = false;
       function startRenderLoop() {
         resizeCanvas();
+        rebuildDamageLayer();
         if (!started) {
           started = true;
           render();
