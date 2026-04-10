@@ -66,6 +66,25 @@
         opacity: 0;
       }
 
+      #rotatePrompt {
+        position: fixed;
+        inset: 0;
+        z-index: 25;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 24px;
+        background: rgba(0, 0, 0, 0.72);
+        color: white;
+        font: 600 22px/1.4 Inter, system-ui, sans-serif;
+        backdrop-filter: blur(8px);
+      }
+
+      #rotatePrompt.show {
+        display: flex;
+      }
+
       #bg {
         position: fixed;
         inset: 0;
@@ -88,19 +107,21 @@
     </style>
   </head>
   <body>
+    <div id="rotatePrompt">Rotate your screen to start</div>
     <div id="hint">Click mouse to shoot!</div>
     <button id="resetBtn" type="button">Reset</button>
-    <img id="bg" src="/gallery-images/upscaled-2.jpeg" alt="Gallery background" />
+    <video id="bg" src="/gallery-images/gallery-4.mp4" autoplay muted loop playsinline></video>
     <canvas id="fx"></canvas>
 
     <script>
-      const img = document.getElementById("bg");
+      let img = document.getElementById("bg");
       const canvas = document.getElementById("fx");
       const ctx = canvas.getContext("2d");
       const sourceLayer = document.createElement("canvas");
       const sourceCtx = sourceLayer.getContext("2d");
       const resetBtn = document.getElementById("resetBtn");
       const hint = document.getElementById("hint");
+      const rotatePrompt = document.getElementById("rotatePrompt");
 
       const holes = [];
       const shards = [];
@@ -139,6 +160,46 @@
           x: (event.clientX - rect.left) * dpr,
           y: (event.clientY - rect.top) * dpr,
         };
+      }
+
+      function isMobilePortraitMode() {
+        return window.innerWidth <= 900 && window.innerHeight > window.innerWidth;
+      }
+
+      function syncMediaSource() {
+        const wantsPortrait = isMobilePortraitMode();
+        const nextSrc = wantsPortrait ? "/gallery-images/phone-portrait.mp4" : "/gallery-images/upscaled-2.jpeg";
+        const isVideo = nextSrc.endsWith(".mp4");
+        if (img.dataset.src === nextSrc) return;
+
+        if (isVideo && img.tagName !== "VIDEO") {
+          const video = document.createElement("video");
+          video.id = "bg";
+          video.src = nextSrc;
+          video.autoplay = true;
+          video.muted = true;
+          video.loop = true;
+          video.playsInline = true;
+          video.dataset.src = nextSrc;
+          img.replaceWith(video);
+          img = video;
+        } else if (!isVideo && img.tagName !== "IMG") {
+          const image = document.createElement("img");
+          image.id = "bg";
+          image.src = nextSrc;
+          image.alt = "Gallery background";
+          image.dataset.src = nextSrc;
+          img.replaceWith(image);
+          img = image;
+        } else {
+          img.src = nextSrc;
+          img.dataset.src = nextSrc;
+        }
+      }
+
+      function updateRotatePrompt() {
+        const show = isMobilePortraitMode();
+        rotatePrompt.classList.toggle("show", show);
       }
 
       function drawImageCover(context, image, width, height) {
@@ -503,17 +564,38 @@
         shootAt(p.x, p.y);
       });
 
+      let started = false;
       function startRenderLoop() {
         resizeCanvas();
-        render();
+        if (!started) {
+          started = true;
+          render();
+        }
       }
 
-      img.addEventListener("load", startRenderLoop);
-
-      if (img.complete) {
-        startRenderLoop();
+      function bindMediaListeners() {
+        if (img.tagName === "VIDEO") {
+          img.addEventListener("loadeddata", startRenderLoop, { once: true });
+          img.addEventListener("canplay", startRenderLoop, { once: true });
+          if (img.readyState >= 2) startRenderLoop();
+        } else {
+          img.addEventListener("load", startRenderLoop, { once: true });
+          if (img.complete) startRenderLoop();
+        }
       }
 
+      function refreshMediaMode() {
+        syncMediaSource();
+        updateRotatePrompt();
+        bindMediaListeners();
+      }
+
+      window.addEventListener("resize", () => {
+        refreshMediaMode();
+        resizeCanvas();
+      });
+
+      refreshMediaMode();
       showHint();
     </script>
   </body>
