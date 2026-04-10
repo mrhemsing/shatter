@@ -387,7 +387,7 @@
         if (getAlphaAt(x, y) <= 8) return;
 
         const dpr = window.devicePixelRatio || 1;
-        const radius = rand(14, 24) * dpr;
+        const radius = rand(16, 28) * dpr;
         let spawned = 0;
 
         for (let i = 0; i < 5; i++) {
@@ -397,7 +397,7 @@
           const cy = y + Math.sin(angle) * dist;
           if (getAlphaAt(cx, cy) <= 8) continue;
 
-          const size = Math.round(rand(16, 36) * dpr);
+          const size = Math.round(rand(18, 42) * dpr);
           const shard = carveShard(cx, cy, size);
           if (!shard) continue;
 
