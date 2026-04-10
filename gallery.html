@@ -430,13 +430,20 @@
           if (data[i] > 8) visible += 1;
         }
         const total = Math.max(1, data.length / 4);
-        return (visible / total) > 0.12;
+        return (visible / total) > 0.22;
+      }
+
+      function centerPixelVisible(x, y) {
+        const sx = Math.max(0, Math.min(damageLayer.width - 1, Math.round(x)));
+        const sy = Math.max(0, Math.min(damageLayer.height - 1, Math.round(y)));
+        const data = damageCtx.getImageData(sx, sy, 1, 1).data;
+        return data[3] > 8;
       }
 
       function shootAt(x, y) {
         const dpr = window.devicePixelRatio || 1;
         const radius = rand(20, 38) * dpr;
-        if (!regionStillVisible(x, y, radius)) {
+        if (!centerPixelVisible(x, y) || !regionStillVisible(x, y, radius)) {
           return;
         }
         holes.push({ x, y, r: radius });
