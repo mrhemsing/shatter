@@ -229,6 +229,8 @@
       const ctx = canvas.getContext("2d");
       const sourceLayer = document.createElement("canvas");
       const sourceCtx = sourceLayer.getContext("2d");
+      const damageLayer = document.createElement("canvas");
+      const damageCtx = damageLayer.getContext("2d", { willReadFrequently: true });
       const resetBtn = document.getElementById("resetBtn");
       const hint = document.getElementById("hint");
       const rotatePrompt = document.getElementById("rotatePrompt");
@@ -261,6 +263,8 @@
         canvas.height = height;
         sourceLayer.width = width;
         sourceLayer.height = height;
+        damageLayer.width = width;
+        damageLayer.height = height;
         pointerX = width / 2;
         pointerY = height / 2;
       }
@@ -397,6 +401,16 @@
         }
       }
 
+      function hasVisiblePixels(sx, sy, sw, sh) {
+        const sampleW = Math.max(1, Math.round(sw));
+        const sampleH = Math.max(1, Math.round(sh));
+        const data = damageCtx.getImageData(Math.round(sx), Math.round(sy), sampleW, sampleH).data;
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] > 8) return true;
+        }
+        return false;
+      }
+
       function shootAt(x, y) {
         const dpr = window.devicePixelRatio || 1;
         const radius = rand(20, 38) * dpr;
@@ -412,6 +426,10 @@
           const h = rand(24, 72) * dpr;
           const sx = Math.max(0, Math.min(sourceLayer.width - w, cx - w * 0.5));
           const sy = Math.max(0, Math.min(sourceLayer.height - h, cy - h * 0.5));
+          if (!hasVisiblePixels(sx, sy, w, h)) {
+            continue;
+          }
+
           const dx = cx - x;
           const dy = cy - y;
           const len = Math.hypot(dx, dy) || 1;
@@ -648,12 +666,15 @@
         const isPortraitRotateScreen = isMobilePortraitMode();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         sourceCtx.clearRect(0, 0, sourceLayer.width, sourceLayer.height);
+        damageCtx.clearRect(0, 0, damageLayer.width, damageLayer.height);
 
         if (!isPortraitRotateScreen) {
           drawImageCover(ctx, img, canvas.width, canvas.height);
           drawImageCover(sourceCtx, img, sourceLayer.width, sourceLayer.height);
+          drawImageCover(damageCtx, img, damageLayer.width, damageLayer.height);
           punchHoleMask(ctx);
           punchHoleMask(sourceCtx);
+          punchHoleMask(damageCtx);
           drawHoleRims();
           drawShards();
           drawSparks();
