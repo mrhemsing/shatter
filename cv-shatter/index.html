@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<title>Hand Shatter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    overflow: hidden;
+    background: #7b7b7b;
+    font-family: "Press Start 2P", monospace;
+  }
+
+  #vid {
+    position: fixed;
+    top: -9999px; left: -9999px;
+    width: 1px; height: 1px;
+  }
+
+  canvas#canvas {
+    display: block;
+    width: 100vw;
+    height: 100dvh;
+    cursor: default;
+    image-rendering: pixelated;
+  }
+
+  /* ── HTML-in-canvas styles ───────────────────────────── */
+
+  #draw_element {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: transparent;
+  }
+
+  /* Mac OS window chrome */
+  .mac-bar {
+    background: #c0c0c0;
+    border-bottom: 3px solid #000;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .mac-titlebar {
+    height: 22px;
+    display: flex;
+    align-items: center;
+    padding: 0 5px;
+    gap: 6px;
+    background: repeating-linear-gradient(
+      180deg,
+      #000 0px, #000 1px,
+      #fff 1px, #fff 2px
+    );
+    border-bottom: 2px solid #000;
+  }
+
+  .close-box {
+    width: 14px;
+    height: 14px;
+    background: #c0c0c0;
+    border: 2px solid #000;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .close-box::before,
+  .close-box::after {
+    content: "";
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 8px; height: 2px;
+    background: #000;
+    transform-origin: center;
+  }
+  .close-box::before { transform: translate(-50%, -50%) rotate(45deg); }
+  .close-box::after  { transform: translate(-50%, -50%) rotate(-45deg); }
+
+  .win-title {
+    background: #c0c0c0;
+    padding: 1px 10px;
+    font-size: 13px;
+    font-family: "Press Start 2P", monospace;
+    color: #000;
+    white-space: nowrap;
+  }
+
+  .mac-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    gap: 12px;
+  }
+
+  .mac-label {
+    font-size: 11px;
+    color: #000;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .mac-textarea {
+    flex: 1;
+    min-width: 0;
+    height: 36px;
+    padding: 6px 8px;
+    font-family: "Press Start 2P", monospace;
+    font-size: 12px;
+    color: #000;
+    background: #fff;
+    border-top: 2px solid #7b7b7b;
+    border-left: 2px solid #7b7b7b;
+    border-bottom: 2px solid #fff;
+    border-right: 2px solid #fff;
+    outline: none;
+    resize: none;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .mac-check-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-family: "Press Start 2P", monospace;
+    color: #000;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .mac-check-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: #000;
+    flex-shrink: 0;
+  }
+
+  .mac-slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+
+  .mac-slider {
+    width: 110px;
+    accent-color: #000;
+    cursor: pointer;
+  }
+
+  .mac-slider-val {
+    font-size: 11px;
+    font-family: "Press Start 2P", monospace;
+    color: #000;
+    white-space: nowrap;
+    min-width: 3.5ch;
+  }
+
+  .mac-hint {
+    font-size: 10px;
+    color: #333;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* transparent area — webcam shows through here */
+  .cam-slot {
+    flex: 1;
+    background: transparent;
+  }
+
+  /* Mac status bar */
+  .mac-statusbar {
+    height: 26px;
+    background: #c0c0c0;
+    border-top: 2px solid #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    gap: 8px;
+    flex-shrink: 0;
+    font-size: 10px;
+    font-family: "Press Start 2P", monospace;
+    color: #000;
+    overflow: hidden;
+  }
+
+  .mac-statusbar .sep { color: #7b7b7b; user-select: none; }
+</style>
+
+<!-- Video element for webcam (off-screen, still active for pixel reads) -->
+<video id="vid" autoplay muted playsinline></video>
+
+<canvas id="canvas" layoutsubtree>
+  <div id="draw_element">
+
+    <div class="mac-bar">
+      <div class="mac-titlebar">
+        <div class="close-box"></div>
+        <span class="win-title"></span>
+      </div>
+      <div class="mac-toolbar">
+        <span class="mac-label">://</span>
+        <textarea class="mac-textarea">HTML-in-canvas API is ...</textarea>
+        <label class="mac-check-label">
+          <input type="checkbox" id="fun-check" />
+          fun?
+        </label>
+        <div class="mac-slider-wrap">
+          <input type="range" id="fun-slider" class="mac-slider" min="0" max="100" value="0" />
+          <span id="slider-val" class="mac-slider-val">0%</span>
+        </div>
+        <span class="mac-hint">[ bend thumb to fire ]</span>
+      </div>
+    </div>
+
+    <!-- webcam drawn directly to canvas shows here -->
+    <div class="cam-slot"></div>
+
+    <div class="mac-statusbar">
+      <span>&#9632; READY</span>
+      <span class="sep">|</span>
+      <span id="st-hand">HAND: --</span>
+      <span class="sep">|</span>
+      <span id="st-thumb">THUMB: --</span>
+      <span class="sep">|</span>
+      <span id="st-shots">SHOTS: 0</span>
+    </div>
+
+  </div>
+</canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+<script>
+// ── Canvas & layers ───────────────────────────────────────
+
+const canvas    = document.getElementById("canvas");
+const ctx       = canvas.getContext("2d");
+const sourceLayer = document.createElement("canvas");
+const sourceCtx   = sourceLayer.getContext("2d");
+const videoEl   = document.getElementById("vid");
+
+// ── Shatter state ─────────────────────────────────────────
+
+const holes  = [];
+const shards = [];
+const sparks = [];
+const MAX_HOLES  = 80;
+const MAX_SHARDS = 400;
+const GRAVITY    = 1700;
+const FLOOR_PAD  = 24;
+
+let pointerX  = 0, pointerY = 0;
+let hasPointer = false;
+let lastTime  = performance.now();
+
+// ── Hand tracking state ───────────────────────────────────
+
+let handLandmarks = null;
+let prevThumbBent = false;
+let shotCount     = 0;
+let lastShootTime = 0;
+
+// Smoothed pointer position (exponential moving average)
+let smoothX = -1, smoothY = -1;
+const SMOOTH = 0.3; // weight of new sample (lower = smoother, more lag)
+
+// ── Status DOM refs ───────────────────────────────────────
+
+const stHand  = document.getElementById("st-hand");
+const stThumb = document.getElementById("st-thumb");
+const stShots = document.getElementById("st-shots");
+
+// ── Helpers ───────────────────────────────────────────────
+
+function rand(a, b) { return a + Math.random() * (b - a); }
+
+function setBackingSize(w, h) {
+  canvas.width      = w;
+  canvas.height     = h;
+  sourceLayer.width  = w;
+  sourceLayer.height = h;
+  pointerX = w * 0.5;
+  pointerY = h * 0.5;
+  canvas.requestPaint();
+}
+
+// ── Shoot ─────────────────────────────────────────────────
+
+function shootAt(cx, cy) {
+  const now = performance.now();
+  if (now - lastShootTime < 800) return;
+  lastShootTime = now;
+
+  shotCount++;
+  if (stShots) stShots.textContent = `SHOTS: ${shotCount}`;
+
+  const radius = rand(48, 72) * devicePixelRatio;
+  holes.push({ x: cx, y: cy, r: radius });
+  if (holes.length > MAX_HOLES) holes.shift();
+
+  for (let i = 0; i < 7; i++) {
+    const ang  = rand(0, Math.PI * 2);
+    const dist = Math.sqrt(Math.random()) * radius;
+    const px   = cx + Math.cos(ang) * dist;
+    const py   = cy + Math.sin(ang) * dist;
+    const sw   = rand(60, 120) * devicePixelRatio;
+    const sh   = rand(60, 120) * devicePixelRatio;
+    const sx   = Math.max(0, Math.min(sourceLayer.width  - sw, px - sw * 0.5));
+    const sy   = Math.max(0, Math.min(sourceLayer.height - sh, py - sh * 0.5));
+    const dx   = px - cx, dy = py - cy;
+    const len  = Math.hypot(dx, dy) || 1;
+    shards.push({
+      sx, sy, sw, sh,
+      x: sx + sw * 0.5, y: sy + sh * 0.5,
+      vx: (dx / len) * rand(220, 720) + rand(-60, 60),
+      vy: (dy / len) * rand(180, 620) - rand(280, 680),
+      rot: rand(-0.3, 0.3),
+      vr:  rand(-5.5, 5.5),
+      settled: false,
+    });
+  }
+  if (shards.length > MAX_SHARDS) shards.splice(0, shards.length - MAX_SHARDS);
+
+  for (let i = 0; i < 12; i++) {
+    const ang  = rand(0, Math.PI * 2);
+    const spd  = rand(220, 740);
+    const life = rand(0.2, 0.45);
+    sparks.push({
+      x: cx, y: cy,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd,
+      life, maxLife: life,
+    });
+  }
+}
+
+function shoot(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  shootAt(
+    (clientX - r.left) * devicePixelRatio,
+    (clientY - r.top)  * devicePixelRatio
+  );
+}
+
+// ── Hand tracking ─────────────────────────────────────────
+
+function updateHandTracking() {
+  if (!handLandmarks) {
+    hasPointer = false;
+    if (stHand)  stHand.textContent  = "HAND: --";
+    if (stThumb) stThumb.textContent = "THUMB: --";
+    return;
+  }
+
+  const tip  = handLandmarks[8];  // index fingertip
+  const tTip = handLandmarks[4];  // thumb tip
+  const tIP  = handLandmarks[3];  // thumb IP joint (middle knuckle — less bend needed than MCP)
+
+  // Mirror x, amplify movement around center
+  const SENSITIVITY = 2.0;
+  const rawX = (1 - tip.x) * canvas.width;
+  const rawY = tip.y * canvas.height;
+  const targetX = Math.max(0, Math.min(canvas.width,  canvas.width  * 0.5 + (rawX - canvas.width  * 0.5) * SENSITIVITY));
+  const targetY = Math.max(0, Math.min(canvas.height, canvas.height * 0.5 + (rawY - canvas.height * 0.5) * SENSITIVITY));
+
+  // Exponential smoothing — seed on first valid reading
+  if (smoothX < 0) { smoothX = targetX; smoothY = targetY; }
+  smoothX = smoothX + (targetX - smoothX) * SMOOTH;
+  smoothY = smoothY + (targetY - smoothY) * SMOOTH;
+  pointerX = smoothX;
+  pointerY = smoothY;
+  hasPointer = true;
+
+  if (stHand) stHand.textContent = "HAND: LOCKED";
+
+  // Bent = thumb tip y at or below knuckle y (y increases downward)
+  const thumbBent = tTip.y >= tIP.y - 0.03;
+  if (stThumb) stThumb.textContent = thumbBent ? "THUMB: FIRE!" : "THUMB: READY";
+
+  // Edge trigger: bent false→true fires one shot
+  if (thumbBent && !prevThumbBent) {
+    shootAt(pointerX, pointerY);
+  }
+  prevThumbBent = thumbBent;
+}
+
+// ── Physics ───────────────────────────────────────────────
+
+function updatePhysics(dt) {
+  const groundY = canvas.height - FLOOR_PAD * devicePixelRatio;
+
+  for (const s of shards) {
+    if (s.settled) continue;
+    s.vy  += GRAVITY * dt;
+    s.x   += s.vx * dt;
+    s.y   += s.vy * dt;
+    s.rot += s.vr * dt;
+    if (s.y + s.sh * 0.5 >= groundY) {
+      s.y   = groundY - s.sh * 0.5;
+      s.vy *= -0.24;
+      s.vx *= 0.78;
+      s.vr *= 0.72;
+      if (Math.abs(s.vy) < 20 && Math.abs(s.vx) < 20) {
+        s.vx = s.vy = s.vr = 0;
+        s.settled = true;
+      }
+    }
+  }
+
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i];
+    s.life -= dt;
+    if (s.life <= 0) { sparks.splice(i, 1); continue; }
+    s.vy += GRAVITY * 0.45 * dt;
+    s.x  += s.vx * dt;
+    s.y  += s.vy * dt;
+  }
+}
+
+// ── Drawing ───────────────────────────────────────────────
+
+function drawWebcam() {
+  if (videoEl.readyState < 2) return;
+  // Mirror horizontally so it feels like a mirror
+  ctx.save();
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}
+
+function drawHoleWarps() {
+  const ringCount = 8;
+  for (const hole of holes) {
+    const warpOuter = hole.r * 2.8;
+    for (let i = 0; i < ringCount; i++) {
+      const outerFrac = i / ringCount;
+      const innerFrac = (i + 1) / ringCount;
+      const ringOuter = warpOuter - outerFrac * (warpOuter - hole.r);
+      const ringInner = warpOuter - innerFrac * (warpOuter - hole.r);
+      const pull  = innerFrac * innerFrac * 0.22;
+      const scale = 1 - pull;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(hole.x, hole.y, ringOuter, 0, Math.PI * 2);
+      ctx.arc(hole.x, hole.y, ringInner, 0, Math.PI * 2, true);
+      ctx.clip();
+      ctx.translate(hole.x, hole.y);
+      ctx.scale(scale, scale);
+      ctx.translate(-hole.x, -hole.y);
+      ctx.drawImage(sourceLayer, 0, 0);
+      ctx.restore();
+    }
+
+    const shadow = ctx.createRadialGradient(
+      hole.x, hole.y, hole.r * 0.2,
+      hole.x, hole.y, hole.r * 2.2
+    );
+    shadow.addColorStop(0,    "rgba(0,0,0,0.65)");
+    shadow.addColorStop(0.45, "rgba(0,0,0,0.2)");
+    shadow.addColorStop(1,    "rgba(0,0,0,0)");
+    ctx.fillStyle = shadow;
+    ctx.beginPath();
+    ctx.arc(hole.x, hole.y, hole.r * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(hole.x, hole.y, hole.r * 1.4, 0, Math.PI * 2);
+    ctx.clip();
+    const bevel = ctx.createLinearGradient(
+      hole.x - hole.r, hole.y - hole.r,
+      hole.x + hole.r, hole.y + hole.r
+    );
+    bevel.addColorStop(0,   "rgba(255,255,255,0.07)");
+    bevel.addColorStop(0.5, "rgba(0,0,0,0)");
+    bevel.addColorStop(1,   "rgba(0,0,0,0.18)");
+    ctx.fillStyle = bevel;
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawHoles() {
+  ctx.save();
+  ctx.fillStyle = "#000";
+  ctx.globalCompositeOperation = "destination-out";
+  for (const hole of holes) {
+    const jag = hole.r * 0.22;
+    ctx.beginPath();
+    for (let i = 0; i < 20; i++) {
+      const a  = (i / 20) * Math.PI * 2;
+      const rr = hole.r
+        + Math.sin(a * 6.0 + hole.x * 0.003) * jag
+        + Math.cos(a * 3.7 + hole.y * 0.004) * jag * 0.6;
+      const x = hole.x + Math.cos(a) * rr;
+      const y = hole.y + Math.sin(a) * rr;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  for (const hole of holes) {
+    const jag = hole.r * 0.22;
+    ctx.beginPath();
+    for (let i = 0; i < 20; i++) {
+      const a  = (i / 20) * Math.PI * 2;
+      const rr = hole.r * 1.04
+        + Math.sin(a * 6.0 + hole.x * 0.003) * jag
+        + Math.cos(a * 3.7 + hole.y * 0.004) * jag * 0.6;
+      const x = hole.x + Math.cos(a) * rr;
+      const y = hole.y + Math.sin(a) * rr;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = "rgba(252,252,252,0.18)";
+    ctx.lineWidth   = 2 * devicePixelRatio;
+    ctx.stroke();
+  }
+}
+
+function drawShards() {
+  for (const s of shards) {
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.rot);
+    ctx.drawImage(sourceLayer, s.sx, s.sy, s.sw, s.sh,
+      -s.sw * 0.5, -s.sh * 0.5, s.sw, s.sh);
+    ctx.strokeStyle = "rgba(252,252,252,0.22)";
+    ctx.lineWidth   = 1.5 * devicePixelRatio;
+    ctx.strokeRect(-s.sw * 0.5, -s.sh * 0.5, s.sw, s.sh);
+    ctx.restore();
+  }
+}
+
+function drawSparks() {
+  for (const s of sparks) {
+    const t = s.life / s.maxLife;
+    const r = Math.round(252 - t * 20);
+    const g = Math.round(152 + t * 100);
+    const b = Math.round(56 * (1 - t));
+    ctx.fillStyle = `rgba(${r},${g},${b},${0.25 + t * 0.75})`;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, (2 + t * 2.5) * devicePixelRatio, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawCrosshair() {
+  if (!hasPointer || !handLandmarks) return; // only render for hand tracker; mouse has system cursor
+  const firing = prevThumbBent;
+  const r    = (firing ? 22 : 16) * devicePixelRatio;
+  const dot  = 2.5 * devicePixelRatio;
+  const tick = 6 * devicePixelRatio;
+  const color = firing ? "#fcc41c" : "#e40028";
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = 2.5 * devicePixelRatio;
+  ctx.beginPath();
+  ctx.arc(pointerX, pointerY, r, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(pointerX, pointerY, dot, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(pointerX,       pointerY - r - tick);
+  ctx.lineTo(pointerX,       pointerY - r + tick);
+  ctx.moveTo(pointerX,       pointerY + r - tick);
+  ctx.lineTo(pointerX,       pointerY + r + tick);
+  ctx.moveTo(pointerX - r - tick, pointerY);
+  ctx.lineTo(pointerX - r + tick, pointerY);
+  ctx.moveTo(pointerX + r - tick, pointerY);
+  ctx.lineTo(pointerX + r + tick, pointerY);
+  ctx.stroke();
+}
+
+// ── Paint loop ────────────────────────────────────────────
+
+const drawElement = canvas.firstElementChild;
+
+canvas.onpaint = () => {
+  const now = performance.now();
+  const dt  = Math.min((now - lastTime) / 1000, 0.05);
+  lastTime  = now;
+
+  updateHandTracking();
+  updatePhysics(dt);
+
+  ctx.reset();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 1) Webcam fills full canvas as background (mirrored)
+  drawWebcam();
+
+  // 2) HTML overlay: top bar is opaque mac chrome; cam-slot is transparent
+  if (drawElement instanceof HTMLElement && drawElement.parentElement === canvas) {
+    const syncTransform = ctx.drawElementImage(drawElement, 0, 0, canvas.width, canvas.height);
+    drawElement.style.transform = syncTransform.toString();
+  }
+
+  // 3) Snapshot canvas (webcam + UI bars) for shard pixel sampling
+  sourceCtx.reset();
+  sourceCtx.clearRect(0, 0, sourceLayer.width, sourceLayer.height);
+  sourceCtx.drawImage(canvas, 0, 0);
+
+  // 4) Shatter effects
+  drawHoleWarps();
+  drawHoles();
+  drawShards();
+  drawSparks();
+  drawCrosshair();
+};
+
+// ── MediaPipe Hands + webcam init ─────────────────────────
+
+async function initHands() {
+  const hands = new Hands({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+  });
+
+  hands.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.7,
+    minTrackingConfidence: 0.5,
+  });
+
+  hands.onResults((res) => {
+    handLandmarks = res.multiHandLandmarks?.[0] ?? null;
+  });
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user", width: { ideal: 1500 }, height: { ideal: 1500 } },
+    });
+    videoEl.srcObject = stream;
+    await videoEl.play();
+  } catch (err) {
+    console.warn("Webcam error:", err);
+    return;
+  }
+
+  // Feed frames to MediaPipe; guard against piling up
+  let busy = false;
+  async function processFrame() {
+    if (!busy && videoEl.readyState >= 2) {
+      busy = true;
+      try { await hands.send({ image: videoEl }); } finally { busy = false; }
+    }
+    requestAnimationFrame(processFrame);
+  }
+  processFrame();
+}
+
+initHands();
+
+// ── Slider live update ────────────────────────────────────
+
+const funSlider = document.getElementById("fun-slider");
+const sliderVal = document.getElementById("slider-val");
+if (funSlider) {
+  funSlider.addEventListener("input", () => {
+    if (sliderVal) sliderVal.textContent = funSlider.value + "%";
+    canvas.requestPaint();
+  });
+}
+
+// ── Mouse fallback (shoot only — cursor is the real pointer) ──
+
+canvas.addEventListener("pointermove", (e) => {
+  if (handLandmarks) return; // hand tracking takes priority when active
+  const r = canvas.getBoundingClientRect();
+  pointerX = (e.clientX - r.left) * devicePixelRatio;
+  pointerY = (e.clientY - r.top)  * devicePixelRatio;
+  hasPointer = true;
+});
+canvas.addEventListener("pointerleave", () => {
+  if (!handLandmarks) hasPointer = false;
+});
+canvas.addEventListener("pointerdown", (e) => {
+  if (e.button !== 2) return;
+  e.preventDefault();
+  shoot(e.clientX, e.clientY);
+});
+canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+// ── Resize ────────────────────────────────────────────────
+
+new ResizeObserver(([entry]) => {
+  const box = entry.devicePixelContentBoxSize[0];
+  setBackingSize(box.inlineSize, box.blockSize);
+}).observe(canvas, { box: "device-pixel-content-box" });
+
+// ── RAF tick ──────────────────────────────────────────────
+
+function tick() {
+  canvas.requestPaint();
+  requestAnimationFrame(tick);
+}
+tick();
+</script>
