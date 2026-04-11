@@ -308,7 +308,7 @@
       function showHint() {
         hint.classList.remove("hidden");
         if (hintTimeout) clearTimeout(hintTimeout);
-        hintTimeout = setTimeout(() => hint.classList.add("hidden"), 1000);
+        hintTimeout = setTimeout(() => hint.classList.add("hidden"), 500);
       }
 
       function resetGame() {
