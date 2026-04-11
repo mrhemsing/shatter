@@ -294,9 +294,10 @@
         const drawHeight = imageHeight * scale;
         const x = (width - drawWidth) / 2;
         const desktopOffset = window.innerWidth >= 1024 ? -10 * (window.devicePixelRatio || 1) : 0;
+        const mobileOffset = window.innerWidth <= 900 ? -75 * (window.devicePixelRatio || 1) : 0;
         const y = isMobileLandscape
-          ? (height - drawHeight) / 2
-          : ((height - drawHeight) / 2) + desktopOffset;
+          ? ((height - drawHeight) / 2) + mobileOffset
+          : ((height - drawHeight) / 2) + desktopOffset + mobileOffset;
         return { x, y, drawWidth, drawHeight };
       }
 
