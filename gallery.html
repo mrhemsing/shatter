@@ -281,12 +281,17 @@
       function computeImageLayout(width, height) {
         const imageWidth = img.naturalWidth || img.width || width;
         const imageHeight = img.naturalHeight || img.height || height;
-        const scale = Math.max(width / imageWidth, height / imageHeight);
+        const isMobileLandscape = window.innerWidth <= 900 && window.innerWidth > window.innerHeight;
+        const scale = isMobileLandscape
+          ? Math.min(width / imageWidth, height / imageHeight)
+          : Math.max(width / imageWidth, height / imageHeight);
         const drawWidth = imageWidth * scale;
         const drawHeight = imageHeight * scale;
         const x = (width - drawWidth) / 2;
         const desktopOffset = window.innerWidth >= 1024 ? -10 * (window.devicePixelRatio || 1) : 0;
-        const y = ((height - drawHeight) / 2) + desktopOffset;
+        const y = isMobileLandscape
+          ? (height - drawHeight) / 2
+          : ((height - drawHeight) / 2) + desktopOffset;
         return { x, y, drawWidth, drawHeight };
       }
 
