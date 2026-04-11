@@ -261,7 +261,7 @@
       let baseLayout = null;
       let score = 0;
       let targets = [];
-      const debugTargets = false;
+      const debugTargets = new URLSearchParams(window.location.search).get("debugTargets") === "1";
 
       function rand(min, max) {
         return min + Math.random() * (max - min);
@@ -640,15 +640,26 @@
 
       function drawTargetDebugOverlay() {
         if (!debugTargets) return;
+        const dpr = window.devicePixelRatio || 1;
         ctx.save();
         ctx.strokeStyle = "rgba(57, 255, 20, 0.95)";
         ctx.fillStyle = "rgba(57, 255, 20, 0.16)";
-        ctx.lineWidth = 2 * (window.devicePixelRatio || 1);
+        ctx.lineWidth = 2 * dpr;
+        ctx.font = `${12 * dpr}px Inter, system-ui, sans-serif`;
         for (const target of targets) {
           ctx.beginPath();
           ctx.arc(target.x, target.y, target.r, 0, Math.PI * 2);
           ctx.fill();
           ctx.stroke();
+          const label = `${target.id} +${target.points}`;
+          ctx.fillStyle = "rgba(0,0,0,0.72)";
+          const textWidth = ctx.measureText(label).width;
+          const labelX = target.x - textWidth / 2 - 8 * dpr;
+          const labelY = target.y - target.r - 22 * dpr;
+          ctx.fillRect(labelX, labelY, textWidth + 16 * dpr, 18 * dpr);
+          ctx.fillStyle = "rgba(57, 255, 20, 0.98)";
+          ctx.fillText(label, target.x - textWidth / 2, target.y - target.r - 9 * dpr);
+          ctx.fillStyle = "rgba(57, 255, 20, 0.16)";
         }
         ctx.restore();
       }
