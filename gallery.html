@@ -287,9 +287,7 @@
         const imageWidth = img.naturalWidth || img.width || width;
         const imageHeight = img.naturalHeight || img.height || height;
         const isMobileLandscape = window.innerWidth <= 900 && window.innerWidth > window.innerHeight;
-        const scale = isMobileLandscape
-          ? Math.min(width / imageWidth, height / imageHeight)
-          : Math.max(width / imageWidth, height / imageHeight);
+        const scale = Math.max(width / imageWidth, height / imageHeight);
         const drawWidth = imageWidth * scale;
         const drawHeight = imageHeight * scale;
         const x = (width - drawWidth) / 2;
