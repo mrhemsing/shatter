@@ -165,6 +165,12 @@
         display: block;
       }
 
+      @media (max-width: 900px) {
+        #experimentLink {
+          display: none;
+        }
+      }
+
       @media (orientation: portrait) and (max-width: 900px) {
         #rotatePrompt {
           display: flex;
@@ -189,7 +195,6 @@
         }
 
         #resetBtn,
-        #experimentLink,
         #badgeLink,
         #hint {
           display: none;
