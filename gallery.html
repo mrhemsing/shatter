@@ -605,7 +605,8 @@
       }
 
       function shootAt(x, y) {
-        if (getAlphaAt(x, y) <= 8) return;
+        const hitTarget = findTargetAt(x, y);
+        if (!hitTarget && getAlphaAt(x, y) <= 8) return;
 
         const dpr = window.devicePixelRatio || 1;
         const radius = rand(16, 28) * dpr;
@@ -631,7 +632,7 @@
           spawned += 1;
         }
 
-        if (!spawned) return;
+        if (!spawned && !hitTarget) return;
         awardTargetPoints(x, y);
         if (shards.length > maxShards) shards.splice(0, shards.length - maxShards);
 
