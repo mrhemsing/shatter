@@ -299,7 +299,7 @@
     <a id="experimentLink" href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">a html-in-canvas experiment</a>
     <button id="saveTargetsBtn" type="button">Save targets</button>
     <button id="resetTargetsBtn" type="button">Reset targets</button>
-    <div id="scoreboard"><div id="scoreLine">Score: <span id="scoreValue">0</span>/<span id="maxScoreValue">0</span></div><div id="metaLine">Time: <span id="timerValue">60</span> <span aria-hidden="true">•</span> Bullets: <span id="ammoValue">80</span></div></div>
+    <div id="scoreboard"><div id="scoreLine">Score: <span id="scoreValue">0</span>/<span id="maxScoreValue">0</span></div><div id="metaLine">Time: <span id="timerValue">30</span> <span aria-hidden="true">•</span> Bullets: <span id="ammoValue">80</span></div></div>
     <a id="badgeLink" href="https://b-average.com" target="_blank" rel="noreferrer">B AVERAGE</a>
     <div id="hint">Click mouse to shoot!</div>
     <button id="resetBtn" type="button">Reset</button>
@@ -341,7 +341,7 @@
       let targets = [];
       const debugTargets = new URLSearchParams(window.location.search).get("debugTargets") === "1";
       let activeTargetId = null;
-      const ROUND_DURATION_MS = 60000;
+      const ROUND_DURATION_MS = 30000;
       const MAX_BULLETS = 80;
       let roundEndAt = performance.now() + ROUND_DURATION_MS;
       let bulletsLeft = MAX_BULLETS;
