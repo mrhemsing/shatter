@@ -441,11 +441,6 @@
           const dist = Math.hypot(x - target.x, y - target.y);
           if (dist > target.r) continue;
 
-          const sampleX = Math.round(target.x);
-          const sampleY = Math.round(target.y);
-          if (getAlphaAt(sampleX, sampleY) <= 8) continue;
-          if (getAlphaAt(x, y) <= 8) continue;
-
           target.hits += 1;
           score += target.points;
           updateScoreboard();
