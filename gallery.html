@@ -453,7 +453,9 @@
         const saved = localStorage.getItem("galleryTargetDefs");
         if (!saved) return structuredClone(defaultTargetDefs);
         try {
-          return JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          const savedById = new Map(parsed.map((def) => [def.id, def]));
+          return defaultTargetDefs.map((def) => savedById.get(def.id) || def);
         } catch {
           return structuredClone(defaultTargetDefs);
         }
