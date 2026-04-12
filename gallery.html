@@ -262,6 +262,7 @@
       let score = 0;
       let targets = [];
       const debugTargets = new URLSearchParams(window.location.search).get("debugTargets") === "1";
+      let activeTargetId = null;
 
       function rand(min, max) {
         return min + Math.random() * (max - min);
@@ -446,6 +447,10 @@
           updateScoreboard();
           return;
         }
+      }
+
+      function findTargetAt(x, y) {
+        return targets.find((target) => Math.hypot(x - target.x, y - target.y) <= target.r) || null;
       }
 
       function shootAt(x, y) {
@@ -637,11 +642,12 @@
         if (!debugTargets) return;
         const dpr = window.devicePixelRatio || 1;
         ctx.save();
-        ctx.strokeStyle = "rgba(57, 255, 20, 0.95)";
-        ctx.fillStyle = "rgba(57, 255, 20, 0.16)";
         ctx.lineWidth = 2 * dpr;
         ctx.font = `${12 * dpr}px Inter, system-ui, sans-serif`;
         for (const target of targets) {
+          const active = target.id === activeTargetId;
+          ctx.strokeStyle = active ? "rgba(255, 210, 0, 0.98)" : "rgba(57, 255, 20, 0.95)";
+          ctx.fillStyle = active ? "rgba(255, 210, 0, 0.18)" : "rgba(57, 255, 20, 0.16)";
           ctx.beginPath();
           ctx.arc(target.x, target.y, target.r, 0, Math.PI * 2);
           ctx.fill();
@@ -652,9 +658,8 @@
           const labelX = target.x - textWidth / 2 - 8 * dpr;
           const labelY = target.y - target.r - 22 * dpr;
           ctx.fillRect(labelX, labelY, textWidth + 16 * dpr, 18 * dpr);
-          ctx.fillStyle = "rgba(57, 255, 20, 0.98)";
+          ctx.fillStyle = active ? "rgba(255, 210, 0, 0.98)" : "rgba(57, 255, 20, 0.98)";
           ctx.fillText(label, target.x - textWidth / 2, target.y - target.r - 9 * dpr);
-          ctx.fillStyle = "rgba(57, 255, 20, 0.16)";
         }
         ctx.restore();
       }
@@ -709,23 +714,54 @@
       }
 
       resetBtn.addEventListener("click", resetGame);
-      canvas.addEventListener("pointermove", (event) => {
-        const p = pointFromEvent(event);
-        pointerX = p.x;
-        pointerY = p.y;
-        hasPointer = true;
-      });
       canvas.addEventListener("pointerleave", () => {
         hasPointer = false;
       });
       canvas.addEventListener("contextmenu", (event) => event.preventDefault());
       canvas.addEventListener("pointerdown", (event) => {
-        const wantsShoot = event.button === 2 || (event.button === 0 && event.shiftKey) || event.button === 0;
-        if (!wantsShoot || isMobilePortraitMode()) return;
-        event.preventDefault();
+        if (isMobilePortraitMode()) return;
         const p = pointFromEvent(event);
+
+        if (debugTargets && event.button === 0 && !event.shiftKey) {
+          const target = findTargetAt(p.x, p.y);
+          activeTargetId = target?.id || null;
+          return;
+        }
+
+        const wantsShoot = event.button === 2 || (event.button === 0 && event.shiftKey) || event.button === 0;
+        if (!wantsShoot) return;
+        event.preventDefault();
         shootAt(p.x, p.y);
       });
+
+      canvas.addEventListener("pointermove", (event) => {
+        const p = pointFromEvent(event);
+        pointerX = p.x;
+        pointerY = p.y;
+        hasPointer = true;
+
+        if (debugTargets && activeTargetId) {
+          const target = targets.find((item) => item.id === activeTargetId);
+          if (target) {
+            target.x = p.x;
+            target.y = p.y;
+          }
+        }
+      });
+
+      canvas.addEventListener("pointerup", () => {
+        activeTargetId = null;
+      });
+
+      canvas.addEventListener("wheel", (event) => {
+        if (!debugTargets) return;
+        const p = pointFromEvent(event);
+        const target = findTargetAt(p.x, p.y) || targets.find((item) => item.id === activeTargetId);
+        if (!target) return;
+        event.preventDefault();
+        const dpr = window.devicePixelRatio || 1;
+        target.r = Math.max(8 * dpr, target.r + (event.deltaY < 0 ? 4 * dpr : -4 * dpr));
+      }, { passive: false });
 
       let started = false;
       function startRenderLoop() {
