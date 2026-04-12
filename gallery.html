@@ -397,7 +397,10 @@
         const x = (width - drawWidth) / 2;
         const desktopOffset = window.innerWidth >= 1024 ? -10 * (window.devicePixelRatio || 1) : 0;
         const mobileOffset = window.innerWidth <= 900 ? -45 * (window.devicePixelRatio || 1) : 0;
-        const y = ((height - drawHeight) / 2) + desktopOffset + mobileOffset;
+        const unclampedY = ((height - drawHeight) / 2) + desktopOffset + mobileOffset;
+        const minVisibleBottom = height * 0.985;
+        const maxY = minVisibleBottom - drawHeight;
+        const y = window.innerWidth <= 900 ? Math.min(unclampedY, maxY) : unclampedY;
         return { x, y, drawWidth, drawHeight };
       }
 
