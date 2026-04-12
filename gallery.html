@@ -39,6 +39,28 @@
         background: rgba(20, 28, 54, 0.9);
       }
 
+      #saveTargetsBtn {
+        position: fixed;
+        top: 10px;
+        right: 96px;
+        z-index: 20;
+        min-height: 44px;
+        padding: 0 16px;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 12px;
+        background: rgba(10, 14, 32, 0.72);
+        color: #fff;
+        font: 600 14px/1 Inter, system-ui, sans-serif;
+        cursor: pointer;
+        backdrop-filter: blur(10px);
+        display: none;
+      }
+
+      #saveTargetsBtn.show {
+        display: inline-flex;
+        align-items: center;
+      }
+
       #experimentLink {
         position: fixed;
         top: 10px;
@@ -210,6 +232,7 @@
         }
 
         #resetBtn,
+        #saveTargetsBtn,
         #badgeLink,
         #scoreboard,
         #hint {
@@ -226,6 +249,7 @@
       <div id="rotatePromptText">Rotate your screen to start</div>
     </div>
     <a id="experimentLink" href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">a html-in-canvas experiment</a>
+    <button id="saveTargetsBtn" type="button">Save targets</button>
     <div id="scoreboard">Score: <span id="scoreValue">0</span></div>
     <a id="badgeLink" href="https://b-average.com" target="_blank" rel="noreferrer">B AVERAGE</a>
     <div id="hint">Click mouse to shoot!</div>
@@ -244,6 +268,7 @@
       const rotatePrompt = document.getElementById("rotatePrompt");
       const portraitVideo = document.getElementById("portraitVideo");
       const scoreValue = document.getElementById("scoreValue");
+      const saveTargetsBtn = document.getElementById("saveTargetsBtn");
 
       const shards = [];
       const sparks = [];
@@ -325,35 +350,67 @@
         scoreValue.textContent = String(score);
       }
 
+      const defaultTargetDefs = [
+        { id: "clown-1", nx: 0.16, ny: 0.64, nr: 0.024, points: 100, maxHits: 2 },
+        { id: "clown-2", nx: 0.29, ny: 0.64, nr: 0.024, points: 100, maxHits: 2 },
+        { id: "clown-3", nx: 0.41, ny: 0.63, nr: 0.024, points: 150, maxHits: 2 },
+        { id: "clown-4", nx: 0.86, ny: 0.63, nr: 0.024, points: 100, maxHits: 2 },
+        { id: "duck-1", nx: 0.09, ny: 0.79, nr: 0.02, points: 75, maxHits: 1 },
+        { id: "duck-2", nx: 0.20, ny: 0.79, nr: 0.02, points: 75, maxHits: 1 },
+        { id: "duck-3", nx: 0.32, ny: 0.79, nr: 0.02, points: 75, maxHits: 1 },
+        { id: "duck-4", nx: 0.53, ny: 0.80, nr: 0.02, points: 75, maxHits: 1 },
+        { id: "duck-5", nx: 0.65, ny: 0.79, nr: 0.02, points: 75, maxHits: 1 },
+        { id: "duck-6", nx: 0.77, ny: 0.79, nr: 0.02, points: 75, maxHits: 1 },
+        { id: "bullseye-1", nx: 0.14, ny: 0.26, nr: 0.018, points: 50, maxHits: 1 },
+        { id: "bullseye-2", nx: 0.27, ny: 0.23, nr: 0.018, points: 50, maxHits: 1 },
+        { id: "bullseye-3", nx: 0.41, ny: 0.21, nr: 0.018, points: 50, maxHits: 1 },
+        { id: "bullseye-4", nx: 0.72, ny: 0.24, nr: 0.018, points: 50, maxHits: 1 },
+        { id: "bullseye-5", nx: 0.87, ny: 0.26, nr: 0.018, points: 50, maxHits: 1 },
+        { id: "flag-1", nx: 0.18, ny: 0.11, nr: 0.018, points: 25, maxHits: 1 },
+        { id: "flag-2", nx: 0.50, ny: 0.08, nr: 0.018, points: 25, maxHits: 1 },
+        { id: "flag-3", nx: 0.82, ny: 0.11, nr: 0.018, points: 25, maxHits: 1 },
+      ];
+
+      function loadTargetDefs() {
+        const saved = localStorage.getItem("galleryTargetDefs");
+        if (!saved) return structuredClone(defaultTargetDefs);
+        try {
+          return JSON.parse(saved);
+        } catch {
+          return structuredClone(defaultTargetDefs);
+        }
+      }
+
+      function saveTargetDefs() {
+        if (!baseLayout) return;
+        const { x, y, drawWidth, drawHeight } = baseLayout;
+        const serialized = targets.map((target) => ({
+          id: target.id,
+          nx: Number(((target.x - x) / drawWidth).toFixed(4)),
+          ny: Number(((target.y - y) / drawHeight).toFixed(4)),
+          nr: Number((target.r / drawWidth).toFixed(4)),
+          points: target.points,
+          maxHits: target.maxHits,
+        }));
+        localStorage.setItem("galleryTargetDefs", JSON.stringify(serialized));
+      }
+
       function rebuildTargets() {
         if (!baseLayout) {
           targets = [];
           return;
         }
+        const defs = loadTargetDefs();
         const { x, y, drawWidth, drawHeight } = baseLayout;
-        targets = [
-          { id: "clown-1", x: x + drawWidth * 0.16, y: y + drawHeight * 0.64, r: drawWidth * 0.024, points: 100, hits: 0, maxHits: 2 },
-          { id: "clown-2", x: x + drawWidth * 0.29, y: y + drawHeight * 0.64, r: drawWidth * 0.024, points: 100, hits: 0, maxHits: 2 },
-          { id: "clown-3", x: x + drawWidth * 0.41, y: y + drawHeight * 0.63, r: drawWidth * 0.024, points: 150, hits: 0, maxHits: 2 },
-          { id: "clown-4", x: x + drawWidth * 0.86, y: y + drawHeight * 0.63, r: drawWidth * 0.024, points: 100, hits: 0, maxHits: 2 },
-
-          { id: "duck-1", x: x + drawWidth * 0.09, y: y + drawHeight * 0.79, r: drawWidth * 0.02, points: 75, hits: 0, maxHits: 1 },
-          { id: "duck-2", x: x + drawWidth * 0.20, y: y + drawHeight * 0.79, r: drawWidth * 0.02, points: 75, hits: 0, maxHits: 1 },
-          { id: "duck-3", x: x + drawWidth * 0.32, y: y + drawHeight * 0.79, r: drawWidth * 0.02, points: 75, hits: 0, maxHits: 1 },
-          { id: "duck-4", x: x + drawWidth * 0.53, y: y + drawHeight * 0.80, r: drawWidth * 0.02, points: 75, hits: 0, maxHits: 1 },
-          { id: "duck-5", x: x + drawWidth * 0.65, y: y + drawHeight * 0.79, r: drawWidth * 0.02, points: 75, hits: 0, maxHits: 1 },
-          { id: "duck-6", x: x + drawWidth * 0.77, y: y + drawHeight * 0.79, r: drawWidth * 0.02, points: 75, hits: 0, maxHits: 1 },
-
-          { id: "bullseye-1", x: x + drawWidth * 0.14, y: y + drawHeight * 0.26, r: drawWidth * 0.018, points: 50, hits: 0, maxHits: 1 },
-          { id: "bullseye-2", x: x + drawWidth * 0.27, y: y + drawHeight * 0.23, r: drawWidth * 0.018, points: 50, hits: 0, maxHits: 1 },
-          { id: "bullseye-3", x: x + drawWidth * 0.41, y: y + drawHeight * 0.21, r: drawWidth * 0.018, points: 50, hits: 0, maxHits: 1 },
-          { id: "bullseye-4", x: x + drawWidth * 0.72, y: y + drawHeight * 0.24, r: drawWidth * 0.018, points: 50, hits: 0, maxHits: 1 },
-          { id: "bullseye-5", x: x + drawWidth * 0.87, y: y + drawHeight * 0.26, r: drawWidth * 0.018, points: 50, hits: 0, maxHits: 1 },
-
-          { id: "flag-1", x: x + drawWidth * 0.18, y: y + drawHeight * 0.11, r: drawWidth * 0.018, points: 25, hits: 0, maxHits: 1 },
-          { id: "flag-2", x: x + drawWidth * 0.50, y: y + drawHeight * 0.08, r: drawWidth * 0.018, points: 25, hits: 0, maxHits: 1 },
-          { id: "flag-3", x: x + drawWidth * 0.82, y: y + drawHeight * 0.11, r: drawWidth * 0.018, points: 25, hits: 0, maxHits: 1 },
-        ];
+        targets = defs.map((def) => ({
+          id: def.id,
+          x: x + drawWidth * def.nx,
+          y: y + drawHeight * def.ny,
+          r: drawWidth * def.nr,
+          points: def.points,
+          hits: 0,
+          maxHits: def.maxHits,
+        }));
       }
 
       function rebuildWorld() {
@@ -796,6 +853,18 @@
       window.addEventListener("resize", () => {
         updateRotatePrompt();
         resizeCanvas();
+      });
+
+      if (debugTargets) {
+        saveTargetsBtn.classList.add("show");
+      }
+
+      saveTargetsBtn.addEventListener("click", () => {
+        saveTargetDefs();
+        saveTargetsBtn.textContent = "Saved";
+        setTimeout(() => {
+          saveTargetsBtn.textContent = "Save targets";
+        }, 900);
       });
 
       updateRotatePrompt();
