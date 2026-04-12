@@ -42,7 +42,7 @@
       #saveTargetsBtn {
         position: fixed;
         top: 10px;
-        right: 96px;
+        right: 152px;
         z-index: 20;
         min-height: 44px;
         padding: 0 16px;
@@ -57,6 +57,28 @@
       }
 
       #saveTargetsBtn.show {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      #resetTargetsBtn {
+        position: fixed;
+        top: 10px;
+        right: 16px;
+        z-index: 20;
+        min-height: 44px;
+        padding: 0 16px;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 12px;
+        background: rgba(10, 14, 32, 0.72);
+        color: #fff;
+        font: 600 14px/1 Inter, system-ui, sans-serif;
+        cursor: pointer;
+        backdrop-filter: blur(10px);
+        display: none;
+      }
+
+      #resetTargetsBtn.show {
         display: inline-flex;
         align-items: center;
       }
@@ -233,6 +255,7 @@
 
         #resetBtn,
         #saveTargetsBtn,
+        #resetTargetsBtn,
         #badgeLink,
         #scoreboard,
         #hint {
@@ -250,6 +273,7 @@
     </div>
     <a id="experimentLink" href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">a html-in-canvas experiment</a>
     <button id="saveTargetsBtn" type="button">Save targets</button>
+    <button id="resetTargetsBtn" type="button">Reset targets</button>
     <div id="scoreboard">Score: <span id="scoreValue">0</span></div>
     <a id="badgeLink" href="https://b-average.com" target="_blank" rel="noreferrer">B AVERAGE</a>
     <div id="hint">Click mouse to shoot!</div>
@@ -269,6 +293,7 @@
       const portraitVideo = document.getElementById("portraitVideo");
       const scoreValue = document.getElementById("scoreValue");
       const saveTargetsBtn = document.getElementById("saveTargetsBtn");
+      const resetTargetsBtn = document.getElementById("resetTargetsBtn");
 
       const shards = [];
       const sparks = [];
@@ -900,6 +925,7 @@
 
       if (debugTargets) {
         saveTargetsBtn.classList.add("show");
+        resetTargetsBtn.classList.add("show");
       }
 
       saveTargetsBtn.addEventListener("click", () => {
@@ -907,6 +933,15 @@
         saveTargetsBtn.textContent = "Saved";
         setTimeout(() => {
           saveTargetsBtn.textContent = "Save targets";
+        }, 900);
+      });
+
+      resetTargetsBtn.addEventListener("click", () => {
+        localStorage.removeItem("galleryTargetDefs");
+        rebuildTargets();
+        resetTargetsBtn.textContent = "Reset";
+        setTimeout(() => {
+          resetTargetsBtn.textContent = "Reset targets";
         }, 900);
       });
 
