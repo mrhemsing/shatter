@@ -669,8 +669,9 @@
       }
 
       function pruneSettledShards(now) {
+        if (!isMobileMode()) return;
         let removedAny = false;
-        const fadeDelay = isMobileMode() ? mobileSettledFadeDelayMs : settledFadeDelayMs;
+        const fadeDelay = mobileSettledFadeDelayMs;
         for (let i = shards.length - 1; i >= 0; i--) {
           const shard = shards[i];
           if (shard.settled && shard.settledAt != null && now - shard.settledAt >= fadeDelay) {
