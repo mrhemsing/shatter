@@ -177,7 +177,7 @@
         align-items: center;
         justify-content: center;
         text-align: center;
-        white-space: nowrap;
+        white-space: pre-line;
         padding: 14px 22px;
         border-radius: 14px;
         background: rgba(10, 14, 32, 0.58);
@@ -414,7 +414,7 @@
         if (gameOver) return;
         gameOver = true;
         const label = reason === "ammo" ? "Out of bullets!" : "Time!";
-        hint.textContent = `${label} Final score: ${score}/${maxScoreValue.textContent}`;
+        hint.textContent = `${label}\nFinal score: ${score}/${maxScoreValue.textContent}`;
         hint.classList.remove("hidden");
       }
 
