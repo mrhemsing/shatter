@@ -642,15 +642,15 @@
       function wakeUnsupportedSettledShards() {
         for (const shard of shards) {
           if (!shard.settled) continue;
-          const floorY = canvas.height - 2 * (window.devicePixelRatio || 1);
+          const floorY = canvas.height;
           const isOnFloor = shard.y + shard.size / 2 >= floorY - 1;
           if (isOnFloor) continue;
 
           let hasSupport = false;
           for (const other of shards) {
             if (other === shard || !other.settled) continue;
-            const overlapsX = Math.abs(shard.x - other.x) < (shard.size + other.size) * 0.38;
-            const sittingOnOther = Math.abs((shard.y + shard.size / 2) - (other.y - other.size / 2)) < 6 * (window.devicePixelRatio || 1);
+            const overlapsX = Math.abs(shard.x - other.x) < (shard.size + other.size) * 0.28;
+            const sittingOnOther = Math.abs((shard.y + shard.size / 2) - (other.y - other.size / 2)) < 4 * (window.devicePixelRatio || 1);
             if (overlapsX && sittingOnOther) {
               hasSupport = true;
               break;
@@ -683,7 +683,7 @@
       }
 
       function updatePhysics(dt) {
-        const floorY = canvas.height - 2 * (window.devicePixelRatio || 1);
+        const floorY = canvas.height;
         for (const shard of shards) {
           if (shard.settled) continue;
           shard.vy += gravity * dt;
@@ -703,7 +703,7 @@
           let restingOnSettledPiece = false;
           for (const other of shards) {
             if (other === shard || !other.settled) continue;
-            const overlapsX = Math.abs(shard.x - other.x) < (shard.size + other.size) * 0.38;
+            const overlapsX = Math.abs(shard.x - other.x) < (shard.size + other.size) * 0.28;
             const touchingTop = shard.y + shard.size / 2 >= other.y - other.size / 2 && shard.y < other.y;
             if (overlapsX && touchingTop) {
               const topY = other.y - other.size / 2;
