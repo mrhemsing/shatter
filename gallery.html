@@ -210,6 +210,27 @@
         backdrop-filter: blur(1px);
       }
 
+      #layoutDebug {
+        position: fixed;
+        left: 16px;
+        bottom: 16px;
+        z-index: 30;
+        display: none;
+        max-width: min(420px, calc(100vw - 32px));
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.74);
+        border: 1px solid rgba(255,255,255,0.16);
+        color: #9efc7f;
+        font: 12px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+        white-space: pre-wrap;
+        pointer-events: none;
+      }
+
+      #layoutDebug.show {
+        display: block;
+      }
+
       #rotatePrompt.show {
         display: flex;
       }
@@ -290,6 +311,7 @@
     </style>
   </head>
   <body>
+    <div id="layoutDebug"></div>
     <div id="rotatePrompt">
       <div id="portraitStage">
         <video id="portraitVideo" src="/gallery-images/phone-portrait.mp4" autoplay muted loop playsinline></video>
@@ -316,6 +338,7 @@
       const hint = document.getElementById("hint");
       const rotatePrompt = document.getElementById("rotatePrompt");
       const portraitVideo = document.getElementById("portraitVideo");
+      const layoutDebug = document.getElementById("layoutDebug");
       const scoreValue = document.getElementById("scoreValue");
       const maxScoreValue = document.getElementById("maxScoreValue");
       const timerValue = document.getElementById("timerValue");
@@ -346,6 +369,7 @@
       let roundEndAt = performance.now() + ROUND_DURATION_MS;
       let bulletsLeft = MAX_BULLETS;
       let gameOver = false;
+      const showLayoutDebug = new URLSearchParams(window.location.search).get("layoutDebug") === "1";
 
       function rand(min, max) {
         return min + Math.random() * (max - min);
@@ -362,6 +386,7 @@
       function updateRotatePrompt() {
         const show = isMobilePortraitMode();
         rotatePrompt.classList.toggle("show", show);
+        layoutDebug.classList.toggle("show", showLayoutDebug && !show);
         if (show) portraitVideo.play().catch(() => {});
         else portraitVideo.pause();
       }
@@ -545,12 +570,29 @@
         }));
       }
 
+      function updateLayoutDebug() {
+        if (!showLayoutDebug || !baseLayout) return;
+        const sample = targets.slice(0, 6).map((target) => `${target.id}: (${target.x.toFixed(1)}, ${target.y.toFixed(1)}) r=${target.r.toFixed(1)}`).join("\n");
+        layoutDebug.textContent = [
+          `viewport: ${window.innerWidth}x${window.innerHeight}`,
+          `canvas: ${canvas.width}x${canvas.height}`,
+          `dpr: ${(window.devicePixelRatio || 1).toFixed(2)}`,
+          `layout.x: ${baseLayout.x.toFixed(1)}`,
+          `layout.y: ${baseLayout.y.toFixed(1)}`,
+          `layout.w: ${baseLayout.drawWidth.toFixed(1)}`,
+          `layout.h: ${baseLayout.drawHeight.toFixed(1)}`,
+          "",
+          sample,
+        ].join("\n");
+      }
+
       function rebuildWorld() {
         worldCtx.clearRect(0, 0, worldLayer.width, worldLayer.height);
         baseLayout = computeImageLayout(worldLayer.width, worldLayer.height);
         worldCtx.drawImage(img, baseLayout.x, baseLayout.y, baseLayout.drawWidth, baseLayout.drawHeight);
         rebuildTargets();
         updateScoreboard();
+        updateLayoutDebug();
       }
 
       function showHint() {
