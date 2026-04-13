@@ -416,16 +416,16 @@
       function computeImageLayout(width, height) {
         const imageWidth = img.naturalWidth || img.width || width;
         const imageHeight = img.naturalHeight || img.height || height;
-        const scale = Math.max(width / imageWidth, height / imageHeight);
+        const isMobileLandscape = window.innerWidth <= 900 && window.innerWidth > window.innerHeight;
+        const scale = isMobileLandscape
+          ? Math.min(width / imageWidth, height / imageHeight)
+          : Math.max(width / imageWidth, height / imageHeight);
         const drawWidth = imageWidth * scale;
         const drawHeight = imageHeight * scale;
         const x = (width - drawWidth) / 2;
         const desktopOffset = window.innerWidth >= 1024 ? -10 * (window.devicePixelRatio || 1) : 0;
-        const mobileOffset = window.innerWidth <= 900 ? -45 * (window.devicePixelRatio || 1) : 0;
-        const unclampedY = ((height - drawHeight) / 2) + desktopOffset + mobileOffset;
-        const minVisibleBottom = height * 0.985;
-        const maxY = minVisibleBottom - drawHeight;
-        const y = window.innerWidth <= 900 ? Math.min(unclampedY, maxY) : unclampedY;
+        const mobileOffset = isMobileLandscape ? 0 : (window.innerWidth <= 900 ? -45 * (window.devicePixelRatio || 1) : 0);
+        const y = ((height - drawHeight) / 2) + desktopOffset + mobileOffset;
         return { x, y, drawWidth, drawHeight };
       }
 
