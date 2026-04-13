@@ -362,7 +362,9 @@
       let baseLayout = null;
       let score = 0;
       let targets = [];
-      const debugTargets = new URLSearchParams(window.location.search).get("debugTargets") === "1";
+      const query = new URLSearchParams(window.location.search);
+      const debugTargets = query.get("debugTargets") === "1";
+      const targetProfileOverride = query.get("targetProfile");
       let activeTargetId = null;
       const ROUND_DURATION_MS = 30000;
       const MAX_BULLETS = 80;
@@ -544,8 +546,16 @@
         { id: "back-right-7", nx: 0.9155, ny: 0.5744, nr: 0.0144, points: 50, maxHits: 1 },
       ];
 
+      function getTargetProfileKey() {
+        if (targetProfileOverride === "mobile") return "galleryTargetDefs:mobile";
+        if (targetProfileOverride === "desktop") return "galleryTargetDefs:desktop";
+        const isMobileLandscape = window.innerWidth <= 900 && window.innerWidth > window.innerHeight;
+        return isMobileLandscape ? "galleryTargetDefs:mobile" : "galleryTargetDefs:desktop";
+      }
+
       function loadTargetDefs() {
-        const saved = localStorage.getItem("galleryTargetDefs");
+        const storageKey = getTargetProfileKey();
+        const saved = localStorage.getItem(storageKey);
         if (!saved) return structuredClone(defaultTargetDefs);
         try {
           const parsed = JSON.parse(saved);
@@ -567,7 +577,7 @@
           points: target.points,
           maxHits: target.maxHits,
         }));
-        localStorage.setItem("galleryTargetDefs", JSON.stringify(serialized));
+        localStorage.setItem(getTargetProfileKey(), JSON.stringify(serialized));
       }
 
       function rebuildTargets() {
@@ -1085,7 +1095,7 @@
       });
 
       resetTargetsBtn.addEventListener("click", () => {
-        localStorage.removeItem("galleryTargetDefs");
+        localStorage.removeItem(getTargetProfileKey());
         rebuildTargets();
         resetTargetsBtn.textContent = "Reset";
         setTimeout(() => {
