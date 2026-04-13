@@ -417,13 +417,14 @@
         const imageWidth = img.naturalWidth || img.width || width;
         const imageHeight = img.naturalHeight || img.height || height;
         const desktopOffset = window.innerWidth >= 1024 ? -10 * (window.devicePixelRatio || 1) : 0;
-        const mobileOffset = window.innerWidth <= 900 ? -45 * (window.devicePixelRatio || 1) : 0;
-
-        const scale = Math.max(width / imageWidth, height / imageHeight);
+        const isMobileLandscape = window.innerWidth <= 900 && window.innerWidth > window.innerHeight;
+        const scale = isMobileLandscape
+          ? Math.min(width / imageWidth, height / imageHeight)
+          : Math.max(width / imageWidth, height / imageHeight);
         const drawWidth = imageWidth * scale;
         const drawHeight = imageHeight * scale;
         const x = (width - drawWidth) / 2;
-        const y = ((height - drawHeight) / 2) + desktopOffset + mobileOffset;
+        const y = ((height - drawHeight) / 2) + desktopOffset;
 
         const visibleLeft = Math.max(0, -x);
         const visibleTop = Math.max(0, -y);
