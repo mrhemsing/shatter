@@ -424,7 +424,9 @@
         const drawWidth = imageWidth * scale;
         const drawHeight = imageHeight * scale;
         const x = (width - drawWidth) / 2;
-        const y = ((height - drawHeight) / 2) + desktopOffset;
+        const y = isMobileLandscape
+          ? (height - drawHeight) / 2
+          : ((height - drawHeight) / 2) + desktopOffset;
 
         const visibleLeft = Math.max(0, -x);
         const visibleTop = Math.max(0, -y);
