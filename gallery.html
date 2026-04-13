@@ -416,17 +416,32 @@
       function computeImageLayout(width, height) {
         const imageWidth = img.naturalWidth || img.width || width;
         const imageHeight = img.naturalHeight || img.height || height;
-        const isMobileLandscape = window.innerWidth <= 900 && window.innerWidth > window.innerHeight;
-        const scale = isMobileLandscape
-          ? Math.min(width / imageWidth, height / imageHeight)
-          : Math.max(width / imageWidth, height / imageHeight);
+        const desktopOffset = window.innerWidth >= 1024 ? -10 * (window.devicePixelRatio || 1) : 0;
+        const mobileOffset = window.innerWidth <= 900 ? -45 * (window.devicePixelRatio || 1) : 0;
+
+        const scale = Math.max(width / imageWidth, height / imageHeight);
         const drawWidth = imageWidth * scale;
         const drawHeight = imageHeight * scale;
         const x = (width - drawWidth) / 2;
-        const desktopOffset = window.innerWidth >= 1024 ? -10 * (window.devicePixelRatio || 1) : 0;
-        const mobileOffset = isMobileLandscape ? 0 : (window.innerWidth <= 900 ? -45 * (window.devicePixelRatio || 1) : 0);
         const y = ((height - drawHeight) / 2) + desktopOffset + mobileOffset;
-        return { x, y, drawWidth, drawHeight };
+
+        const visibleLeft = Math.max(0, -x);
+        const visibleTop = Math.max(0, -y);
+        const visibleRight = Math.min(drawWidth, width - x);
+        const visibleBottom = Math.min(drawHeight, height - y);
+        const visibleWidth = Math.max(1, visibleRight - visibleLeft);
+        const visibleHeight = Math.max(1, visibleBottom - visibleTop);
+
+        return {
+          x,
+          y,
+          drawWidth,
+          drawHeight,
+          visibleLeft,
+          visibleTop,
+          visibleWidth,
+          visibleHeight,
+        };
       }
 
       function updateScoreboard() {
@@ -558,7 +573,7 @@
           return;
         }
         const defs = loadTargetDefs();
-        const { x, y, drawWidth, drawHeight } = baseLayout;
+        const { x, y, drawWidth, drawHeight, visibleLeft, visibleTop } = baseLayout;
         targets = defs.map((def) => ({
           id: def.id,
           x: x + drawWidth * def.nx,
@@ -567,12 +582,16 @@
           points: def.points,
           hits: 0,
           maxHits: def.maxHits,
+          imageX: drawWidth * def.nx,
+          imageY: drawHeight * def.ny,
+          visibleX: (drawWidth * def.nx) - visibleLeft,
+          visibleY: (drawHeight * def.ny) - visibleTop,
         }));
       }
 
       function updateLayoutDebug() {
         if (!showLayoutDebug || !baseLayout) return;
-        const sample = targets.slice(0, 6).map((target) => `${target.id}: (${target.x.toFixed(1)}, ${target.y.toFixed(1)}) r=${target.r.toFixed(1)}`).join("\n");
+        const sample = targets.slice(0, 6).map((target) => `${target.id}: (${target.x.toFixed(1)}, ${target.y.toFixed(1)}) v=(${target.visibleX.toFixed(1)}, ${target.visibleY.toFixed(1)}) r=${target.r.toFixed(1)}`).join("\n");
         layoutDebug.textContent = [
           `viewport: ${window.innerWidth}x${window.innerHeight}`,
           `canvas: ${canvas.width}x${canvas.height}`,
@@ -581,6 +600,10 @@
           `layout.y: ${baseLayout.y.toFixed(1)}`,
           `layout.w: ${baseLayout.drawWidth.toFixed(1)}`,
           `layout.h: ${baseLayout.drawHeight.toFixed(1)}`,
+          `visibleLeft: ${baseLayout.visibleLeft.toFixed(1)}`,
+          `visibleTop: ${baseLayout.visibleTop.toFixed(1)}`,
+          `visibleWidth: ${baseLayout.visibleWidth.toFixed(1)}`,
+          `visibleHeight: ${baseLayout.visibleHeight.toFixed(1)}`,
           "",
           sample,
         ].join("\n");
