@@ -255,19 +255,21 @@
         }
       }
 
-      @media (orientation: portrait) and (max-width: 900px) {
+      @media (max-width: 900px) {
         #rotatePrompt {
           display: flex;
         }
 
         #portraitStage {
-          display: block;
+          display: none;
         }
 
         #rotatePromptText {
           display: block;
           width: 100%;
+          max-width: 420px;
           font-size: 20px;
+          white-space: pre-line;
         }
 
         canvas {
@@ -283,7 +285,8 @@
         #resetTargetsBtn,
         #badgeLink,
         #scoreboard,
-        #hint {
+        #hint,
+        #experimentLink {
           display: none;
         }
       }
@@ -362,10 +365,12 @@
       }
 
       function updateRotatePrompt() {
-        const show = isMobilePortraitMode();
-        rotatePrompt.classList.toggle("show", show);
-        if (show) portraitVideo.play().catch(() => {});
-        else portraitVideo.pause();
+        const isSmallScreen = window.innerWidth <= 900;
+        rotatePrompt.classList.toggle("show", isSmallScreen);
+        rotatePrompt.querySelector("#rotatePromptText").textContent = isSmallScreen
+          ? "For desktop only.\nMobile version coming soon"
+          : "Rotate your screen to start";
+        portraitVideo.pause();
       }
 
       function resizeCanvas() {
