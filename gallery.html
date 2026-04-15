@@ -430,6 +430,7 @@
       }
 
       function updateScoreboard() {
+        if (isEditMode()) return;
         scoreValue.textContent = String(score);
         const maxScore = targets.reduce((sum, target) => sum + (target.points * target.maxHits), 0);
         maxScoreValue.textContent = String(maxScore);
@@ -444,6 +445,7 @@
       }
 
       function updateTimer(now = performance.now()) {
+        if (isEditMode()) return;
         const remainingMs = Math.max(0, roundEndAt - now);
         timerValue.textContent = String(Math.ceil(remainingMs / 1000));
         ammoValue.textContent = String(bulletsLeft);
@@ -619,6 +621,10 @@
         return debugTargets || query.get("resetDesktopTargets") === "1";
       }
 
+      function isEditMode() {
+        return shouldShowDebugTargets();
+      }
+
       function loadTargetDefs() {
         const storageKey = getTargetProfileKey();
         const baseDefs = getBaseTargetDefs();
@@ -682,6 +688,7 @@
       }
 
       function showHint() {
+        if (isEditMode()) return;
         hint.classList.remove("hidden");
         if (hintTimeout) clearTimeout(hintTimeout);
         hintTimeout = setTimeout(() => hint.classList.add("hidden"), 500);
@@ -1071,9 +1078,10 @@
         if (isMobilePortraitMode()) return;
         const p = pointFromEvent(event);
 
-        if (debugTargets && event.button === 0 && !event.shiftKey) {
+        if (isEditMode() && event.button === 0) {
           const target = findTargetAt(p.x, p.y);
           activeTargetId = target?.id || null;
+          event.preventDefault();
           return;
         }
 
@@ -1089,7 +1097,7 @@
         pointerY = p.y;
         hasPointer = true;
 
-        if (debugTargets && activeTargetId) {
+        if (isEditMode() && activeTargetId) {
           const target = targets.find((item) => item.id === activeTargetId);
           if (target) {
             target.x = p.x;
@@ -1134,6 +1142,9 @@
       if (shouldShowDebugTargets()) {
         saveTargetsBtn.classList.add("show");
         resetTargetsBtn.classList.add("show");
+        resetBtn.style.display = "none";
+        hint.style.display = "none";
+        document.getElementById("scoreboard").style.display = "none";
       }
 
       saveTargetsBtn.addEventListener("click", () => {
