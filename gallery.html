@@ -610,9 +610,18 @@
           : defaultTargetDefsDesktop;
       }
 
+      function shouldIgnoreSavedTargets(storageKey) {
+        if (storageKey !== "galleryTargetDefs:desktop") return false;
+        return query.get("resetDesktopTargets") === "1";
+      }
+
       function loadTargetDefs() {
         const storageKey = getTargetProfileKey();
         const baseDefs = getBaseTargetDefs();
+        if (shouldIgnoreSavedTargets(storageKey)) {
+          localStorage.removeItem(storageKey);
+          return structuredClone(baseDefs);
+        }
         const saved = localStorage.getItem(storageKey);
         if (!saved) return structuredClone(baseDefs);
         try {
