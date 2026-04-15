@@ -615,6 +615,10 @@
         return query.get("resetDesktopTargets") === "1";
       }
 
+      function shouldShowDebugTargets() {
+        return debugTargets || query.get("resetDesktopTargets") === "1";
+      }
+
       function loadTargetDefs() {
         const storageKey = getTargetProfileKey();
         const baseDefs = getBaseTargetDefs();
@@ -983,7 +987,7 @@
       }
 
       function drawTargetDebugOverlay() {
-        if (!debugTargets) return;
+        if (!shouldShowDebugTargets()) return;
         const dpr = window.devicePixelRatio || 1;
         ctx.save();
         ctx.lineWidth = 2 * dpr;
@@ -1099,7 +1103,7 @@
       });
 
       canvas.addEventListener("wheel", (event) => {
-        if (!debugTargets) return;
+        if (!shouldShowDebugTargets()) return;
         const p = pointFromEvent(event);
         const target = findTargetAt(p.x, p.y) || targets.find((item) => item.id === activeTargetId);
         if (!target) return;
@@ -1127,7 +1131,7 @@
         resizeCanvas();
       });
 
-      if (debugTargets) {
+      if (shouldShowDebugTargets()) {
         saveTargetsBtn.classList.add("show");
         resetTargetsBtn.classList.add("show");
       }
