@@ -204,10 +204,11 @@
         gap: 14px;
         text-align: center;
         padding: 24px;
-        background: rgba(0, 0, 0, 0.12);
+        background:
+          linear-gradient(rgba(0, 0, 0, 0.38), rgba(0, 0, 0, 0.38)),
+          url('/gallery-images/upscaled-2.jpeg') center center / cover no-repeat;
         color: white;
         font: 600 22px/1.4 Inter, system-ui, sans-serif;
-        backdrop-filter: blur(1px);
       }
 
       #rotatePrompt.show {
@@ -218,7 +219,10 @@
         width: 100%;
         position: relative;
         z-index: 2;
-        margin-top: -100px;
+        max-width: 420px;
+        padding: 20px 24px;
+        border-radius: 16px;
+        background: rgba(0, 0, 0, 0.38);
         text-shadow: 0 3px 14px rgba(0,0,0,0.7);
       }
 
